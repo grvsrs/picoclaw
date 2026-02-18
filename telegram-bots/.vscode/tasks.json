@@ -1,0 +1,91 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "PicoClaw: Start Dev Bot",
+      "type": "shell",
+      "command": "source .venv/bin/activate && python bots/dev_bot.py",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "PicoClaw: Start Ops Bot",
+      "type": "shell",
+      "command": "source .venv/bin/activate && python bots/ops_bot.py",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "PicoClaw: Start Monitor Bot",
+      "type": "shell",
+      "command": "source .venv/bin/activate && python bots/monitor_bot.py",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "PicoClaw: Start Executor",
+      "type": "shell",
+      "command": "source .venv/bin/activate && python bots/executor.py",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "PicoClaw: Run Tests",
+      "type": "shell",
+      "command": "source .venv/bin/activate && python -m pytest tests/ -v",
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "PicoClaw: Show Kanban Board (Terminal)",
+      "type": "shell",
+      "command": "source .venv/bin/activate && python -c \"from pkg.kanban.store import KanbanStore; from pkg.kanban.telegram_bridge import TelegramKanbanBridge; store = KanbanStore(); bridge = TelegramKanbanBridge(store); print(bridge.list_cards_summary(limit=50))\"",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "PicoClaw: Switch to Personal Mode",
+      "type": "shell",
+      "command": "echo 'LINUX_MODE=PERSONAL' > /tmp/picoclaw_mode && echo 'Switched to PERSONAL mode'",
+      "problemMatcher": []
+    },
+    {
+      "label": "PicoClaw: Switch to Remote Mode",
+      "type": "shell",
+      "command": "echo 'LINUX_MODE=REMOTE' > /tmp/picoclaw_mode && echo 'Switched to REMOTE mode'",
+      "problemMatcher": []
+    },
+    {
+      "label": "PicoClaw: Start All Services",
+      "dependsOn": [
+        "PicoClaw: Start Dev Bot",
+        "PicoClaw: Start Ops Bot",
+        "PicoClaw: Start Monitor Bot",
+        "PicoClaw: Start Executor"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

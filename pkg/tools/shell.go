@@ -37,7 +37,7 @@ func NewExecTool(workingDir string) *ExecTool {
 		timeout:             60 * time.Second,
 		denyPatterns:        denyPatterns,
 		allowPatterns:       nil,
-		restrictToWorkspace: false,
+		restrictToWorkspace: true,
 	}
 }
 

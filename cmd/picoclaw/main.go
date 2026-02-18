@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -20,11 +21,13 @@ import (
 
 	"github.com/chzyer/readline"
 	"github.com/sipeed/picoclaw/pkg/agent"
+	"github.com/sipeed/picoclaw/pkg/api"
 	"github.com/sipeed/picoclaw/pkg/auth"
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/cron"
+	"github.com/sipeed/picoclaw/pkg/integration"
 	"github.com/sipeed/picoclaw/pkg/heartbeat"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/migrate"
@@ -32,7 +35,16 @@ import (
 	"github.com/sipeed/picoclaw/pkg/skills"
 	"github.com/sipeed/picoclaw/pkg/tools"
 	"github.com/sipeed/picoclaw/pkg/voice"
+	webui "github.com/sipeed/picoclaw/web"
 )
+
+func getWebFS() fs.FS {
+	sub, err := fs.Sub(webui.DistFS, "dist")
+	if err != nil {
+		return nil
+	}
+	return sub
+}
 
 var (
 	version   = "0.1.0"
@@ -378,14 +390,6 @@ This file stores important information that should persist across sessions.
 			fmt.Println("  Created skills/")
 		}
 	}
-
-	for filename, content := range templates {
-		filePath := filepath.Join(workspace, filename)
-		if _, err := os.Stat(filePath); os.IsNotExist(err) {
-			os.WriteFile(filePath, []byte(content), 0644)
-			fmt.Printf("  Created %s\n", filename)
-		}
-	}
 }
 
 func migrateCmd() {
@@ -654,7 +658,14 @@ func gatewayCmd() {
 
 	heartbeatService := heartbeat.NewHeartbeatService(
 		cfg.WorkspacePath(),
-		nil,
+		func(prompt string) (string, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			defer cancel()
+			return agentLoop.ProcessDirectWithChannel(
+				ctx, prompt,
+				"heartbeat:system", "system", "heartbeat",
+			)
+		},
 		30*60,
 		true,
 	)
@@ -715,11 +726,32 @@ func gatewayCmd() {
 	}
 	fmt.Println("✓ Heartbeat service started")
 
+	// Initialize and start integrations (kanban, etc.)
+	integrationsRegistry := integration.GetRegistry()
+	if err := integrationsRegistry.InitAll(cfg, msgBus); err != nil {
+		fmt.Printf("Error initializing integrations: %v\n", err)
+	} else {
+		fmt.Println("✓ Integrations initialized")
+	}
+	if err := integrationsRegistry.StartAll(ctx); err != nil {
+		fmt.Printf("Error starting integrations: %v\n", err)
+	} else {
+		fmt.Println("✓ Integrations started")
+	}
+
 	if err := channelManager.StartAll(ctx); err != nil {
 		fmt.Printf("Error starting channels: %v\n", err)
 	}
 
 	go agentLoop.Run(ctx)
+
+	// Start the dashboard API server
+	apiServer := api.NewServer(cfg, agentLoop, channelManager, cronService, msgBus, getWebFS())
+	if err := apiServer.Start(ctx); err != nil {
+		fmt.Printf("Error starting API server: %v\n", err)
+	} else {
+		fmt.Printf("✓ Dashboard UI: http://%s:%d\n", cfg.Gateway.Host, cfg.Gateway.Port)
+	}
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt)
@@ -727,6 +759,7 @@ func gatewayCmd() {
 
 	fmt.Println("\nShutting down...")
 	cancel()
+	apiServer.Stop()
 	heartbeatService.Stop()
 	cronService.Stop()
 	agentLoop.Stop()
@@ -1261,53 +1294,6 @@ func cronEnableCmd(storePath string, disable bool) {
 		fmt.Printf("✓ Job '%s' %s\n", job.Name, status)
 	} else {
 		fmt.Printf("✗ Job %s not found\n", jobID)
-	}
-}
-
-func skillsCmd() {
-	if len(os.Args) < 3 {
-		skillsHelp()
-		return
-	}
-
-	subcommand := os.Args[2]
-
-	cfg, err := loadConfig()
-	if err != nil {
-		fmt.Printf("Error loading config: %v\n", err)
-		os.Exit(1)
-	}
-
-	workspace := cfg.WorkspacePath()
-	installer := skills.NewSkillInstaller(workspace)
-	// 获取全局配置目录和内置 skills 目录
-	globalDir := filepath.Dir(getConfigPath())
-	globalSkillsDir := filepath.Join(globalDir, "skills")
-	builtinSkillsDir := filepath.Join(globalDir, "picoclaw", "skills")
-	skillsLoader := skills.NewSkillsLoader(workspace, globalSkillsDir, builtinSkillsDir)
-
-	switch subcommand {
-	case "list":
-		skillsListCmd(skillsLoader)
-	case "install":
-		skillsInstallCmd(installer)
-	case "remove", "uninstall":
-		if len(os.Args) < 4 {
-			fmt.Println("Usage: picoclaw skills remove <skill-name>")
-			return
-		}
-		skillsRemoveCmd(installer, os.Args[3])
-	case "search":
-		skillsSearchCmd(installer)
-	case "show":
-		if len(os.Args) < 4 {
-			fmt.Println("Usage: picoclaw skills show <skill-name>")
-			return
-		}
-		skillsShowCmd(skillsLoader, os.Args[3])
-	default:
-		fmt.Printf("Unknown skills command: %s\n", subcommand)
-		skillsHelp()
 	}
 }
 

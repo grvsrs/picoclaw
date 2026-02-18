@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/sipeed/picoclaw/pkg/auth"
 	"github.com/sipeed/picoclaw/pkg/config"
@@ -30,7 +31,7 @@ func NewHTTPProvider(apiKey, apiBase string) *HTTPProvider {
 		apiKey:  apiKey,
 		apiBase: apiBase,
 		httpClient: &http.Client{
-			Timeout: 0,
+			Timeout: 300 * time.Second,
 		},
 	}
 }
@@ -247,6 +248,13 @@ func CreateProvider(cfg *config.Config) (LLMProvider, error) {
 		apiBase = cfg.Providers.Groq.APIBase
 		if apiBase == "" {
 			apiBase = "https://api.groq.com/openai/v1"
+		}
+
+	case (strings.Contains(lowerModel, "moonshot") || strings.HasPrefix(model, "moonshot-")) && cfg.Providers.Moonshot.APIKey != "":
+		apiKey = cfg.Providers.Moonshot.APIKey
+		apiBase = cfg.Providers.Moonshot.APIBase
+		if apiBase == "" {
+			apiBase = "https://api.moonshot.cn/v1"
 		}
 
 	case cfg.Providers.VLLM.APIBase != "":

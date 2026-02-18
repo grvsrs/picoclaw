@@ -1,6 +1,6 @@
 module github.com/sipeed/picoclaw
 
-go 1.25.7
+go 1.24.6
 
 require (
 	github.com/adhocore/gronx v1.19.6
@@ -11,12 +11,14 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/larksuite/oapi-sdk-go/v3 v3.5.3
-	github.com/mymmrac/telego v1.6.0
+	github.com/mattn/go-sqlite3 v1.14.34
+	github.com/mymmrac/telego v1.3.0
 	github.com/open-dingtalk/dingtalk-stream-sdk-go v0.9.1
 	github.com/openai/openai-go/v3 v3.21.0
 	github.com/slack-go/slack v0.17.3
 	github.com/tencent-connect/botgo v0.2.1
 	golang.org/x/oauth2 v0.35.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

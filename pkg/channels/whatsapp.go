@@ -105,6 +105,9 @@ func (c *WhatsAppChannel) Send(ctx context.Context, msg bus.OutboundMessage) err
 }
 
 func (c *WhatsAppChannel) listen(ctx context.Context) {
+	backoff := time.Second
+	maxBackoff := 30 * time.Second
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -115,14 +118,29 @@ func (c *WhatsAppChannel) listen(ctx context.Context) {
 			c.mu.Unlock()
 
 			if conn == nil {
-				time.Sleep(1 * time.Second)
+				select {
+				case <-time.After(backoff):
+				case <-ctx.Done():
+					return
+				}
+				if backoff < maxBackoff {
+					backoff *= 2
+				}
 				continue
 			}
+			backoff = time.Second // reset on valid connection
 
 			_, message, err := conn.ReadMessage()
 			if err != nil {
 				log.Printf("WhatsApp read error: %v", err)
-				time.Sleep(2 * time.Second)
+				select {
+				case <-time.After(backoff):
+				case <-ctx.Done():
+					return
+				}
+				if backoff < maxBackoff {
+					backoff *= 2
+				}
 				continue
 			}
 

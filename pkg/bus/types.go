@@ -16,4 +16,12 @@ type OutboundMessage struct {
 	Content string `json:"content"`
 }
 
+// SystemEvent is a typed event flowing through the bus for observability.
+// Used for task lifecycle, bot lifecycle, diff events, etc.
+type SystemEvent struct {
+	Type   string      `json:"type"`   // e.g. "task.created", "bot.started"
+	Source string      `json:"source"` // e.g. "kanban", "orchestrator"
+	Data   interface{} `json:"data"`
+}
+
 type MessageHandler func(InboundMessage) error

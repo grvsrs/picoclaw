@@ -1,0 +1,16 @@
+[Unit]
+Description=IDE Monitor — Antigravity + Copilot workflow observer
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/g/picoclaw/ide-monitor/watcher.py --workspace /home/g --picoclaw http://localhost:8080
+Restart=on-failure
+RestartSec=5
+Environment=HOME=/home/g
+WorkingDirectory=/home/g/picoclaw/ide-monitor
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

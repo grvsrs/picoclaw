@@ -1,0 +1,2104 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PicoClaw Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "primary": "#1754cf",
+        "bg-dark": "#0a0a0b",
+        "surface": "#111621",
+        "border-d": "#1e2533",
+        "accent-cyan": "#00f5ff",
+        "accent-green": "#39ff14",
+        "success": "#10b981",
+        "warn": "#f59e0b",
+        "error": "#ef4444",
+      },
+      fontFamily: {
+        "display": ["Space Grotesk", "sans-serif"],
+        "mono": ["ui-monospace","SFMono-Regular","Menlo","Monaco","Consolas","Liberation Mono","Courier New","monospace"]
+      },
+    },
+  },
+}
+</script>
+<style>
+body { font-family: 'Space Grotesk', sans-serif; }
+.grid-bg {
+  background-image: radial-gradient(rgba(23,84,207,0.08) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+.glow-green { text-shadow: 0 0 8px rgba(57,255,20,0.5); }
+.scrollbar-thin::-webkit-scrollbar { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #1e2533; border-radius: 10px; }
+.fade-in { animation: fadeIn 0.3s ease-in; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 8px rgba(23,84,207,0.3); } 50% { box-shadow: 0 0 16px rgba(23,84,207,0.6); } }
+.pulse-glow { animation: pulse-glow 2s infinite; }
+</style>
+</head>
+<body class="bg-bg-dark text-slate-100 min-h-screen flex flex-col">
+
+<!-- Top Header -->
+<header class="flex items-center justify-between border-b border-white/10 bg-bg-dark/80 backdrop-blur-md px-6 py-3 sticky top-0 z-50">
+  <div class="flex items-center gap-6">
+    <div class="flex items-center gap-3">
+      <div class="text-primary"><span class="material-symbols-outlined text-3xl">deployed_code</span></div>
+      <h2 class="text-xl font-bold tracking-tight uppercase">Pico<span class="text-primary">Claw</span></h2>
+    </div>
+    <div class="h-6 w-px bg-white/10 hidden md:block"></div>
+    <div class="hidden lg:flex items-center gap-4">
+      <div id="health-badge" class="flex items-center gap-2 px-3 py-1 rounded-full bg-accent-green/10 border border-accent-green/20">
+        <span class="size-2 rounded-full bg-accent-green animate-pulse"></span>
+        <span class="text-xs font-bold text-accent-green uppercase tracking-wider">Connecting...</span>
+      </div>
+      <div id="uptime-badge" class="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+        <span class="material-symbols-outlined text-sm text-primary">schedule</span>
+        <span class="text-xs font-bold text-primary uppercase tracking-wider">--</span>
+      </div>
+    </div>
+  </div>
+  <div class="flex items-center gap-4">
+    <div class="hidden sm:flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 border border-white/10">
+      <span class="material-symbols-outlined text-sm text-slate-400">search</span>
+      <input class="bg-transparent border-none focus:ring-0 text-sm w-32 placeholder:text-slate-600" placeholder="Ctrl+K" type="text"/>
+    </div>
+    <div class="size-8 rounded-lg bg-gradient-to-br from-primary to-accent-cyan flex items-center justify-center font-bold text-xs">PC</div>
+  </div>
+</header>
+
+<div class="flex flex-1 overflow-hidden">
+  <!-- Sidebar -->
+  <aside class="w-60 border-r border-white/10 bg-bg-dark hidden md:flex flex-col p-4 gap-6 shrink-0">
+    <nav class="flex flex-col gap-1" id="nav">
+      <a href="#overview" data-page="overview" class="nav-link flex items-center gap-3 px-4 py-2.5 rounded-lg bg-primary text-white font-medium">
+        <span class="material-symbols-outlined">dashboard</span><span>Overview</span>
+      </a>
+      <a href="#bots" data-page="bots" class="nav-link flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/5 text-slate-400 transition-all">
+        <span class="material-symbols-outlined">smart_toy</span><span>Bots</span>
+      </a>
+      <a href="#tasks" data-page="tasks" class="nav-link flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/5 text-slate-400 transition-all">
+        <span class="material-symbols-outlined">task_alt</span><span>Tasks</span>
+      </a>
+      <a href="#agents" data-page="agents" class="nav-link flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/5 text-slate-400 transition-all">
+        <span class="material-symbols-outlined">hub</span><span>Orchestrator</span>
+      </a>
+      <a href="#workflows" data-page="workflows" class="nav-link flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/5 text-slate-400 transition-all">
+        <span class="material-symbols-outlined">account_tree</span><span>Pipelines</span>
+      </a>
+      <a href="#logs" data-page="logs" class="nav-link flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/5 text-slate-400 transition-all">
+        <span class="material-symbols-outlined">terminal</span><span>Logs</span>
+      </a>
+      <a href="#chat" data-page="chat" class="nav-link flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/5 text-slate-400 transition-all">
+        <span class="material-symbols-outlined">chat</span><span>Chat</span>
+      </a>
+      <div class="h-px bg-white/10 my-1"></div>
+      <a href="#activity" data-page="activity" class="nav-link flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/5 text-slate-400 transition-all">
+        <span class="material-symbols-outlined">bolt</span><span>Activity</span>
+      </a>
+      <a href="#integrations" data-page="integrations" class="nav-link flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/5 text-slate-400 transition-all">
+        <span class="material-symbols-outlined">electrical_services</span><span>Integrations</span>
+      </a>
+    </nav>
+
+    <div class="mt-auto">
+      <div class="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">System</p>
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-300">Model</span>
+          <span id="sidebar-model" class="text-xs text-accent-cyan font-mono truncate max-w-[100px]">--</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-300">Tools</span>
+          <span id="sidebar-tools" class="text-xs text-slate-400 font-mono">--</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-300">Sessions</span>
+          <span id="sidebar-sessions" class="text-xs text-slate-400 font-mono">--</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 overflow-y-auto grid-bg relative">
+
+    <!-- PAGE: Overview -->
+    <div id="page-overview" class="page p-6 fade-in">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+        <div>
+          <h1 class="text-4xl font-black tracking-tighter uppercase mb-2">System <span class="text-primary italic">Overview</span></h1>
+          <p class="text-slate-400 font-mono text-sm">PATH: /dashboard/overview</p>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="refreshData()" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all">
+            <span class="material-symbols-outlined text-sm">refresh</span>REFRESH
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-surface border border-border-d rounded-xl p-5 flex flex-col gap-1">
+          <span class="text-slate-500 text-xs font-bold uppercase tracking-wider">Uptime</span>
+          <span id="stat-uptime" class="text-2xl font-bold text-white tracking-tighter">--</span>
+        </div>
+        <div class="bg-surface border border-border-d rounded-xl p-5 flex flex-col gap-1">
+          <span class="text-slate-500 text-xs font-bold uppercase tracking-wider">Channels</span>
+          <span id="stat-channels" class="text-2xl font-bold text-white tracking-tighter">--</span>
+        </div>
+        <div class="bg-surface border border-border-d rounded-xl p-5 flex flex-col gap-1">
+          <span class="text-slate-500 text-xs font-bold uppercase tracking-wider">Sessions</span>
+          <span id="stat-sessions" class="text-2xl font-bold text-white tracking-tighter">--</span>
+        </div>
+        <div class="bg-surface border border-border-d rounded-xl p-5 flex flex-col gap-1">
+          <span class="text-slate-500 text-xs font-bold uppercase tracking-wider">Goroutines</span>
+          <span id="stat-goroutines" class="text-2xl font-bold text-white tracking-tighter">--</span>
+        </div>
+      </div>
+
+      <!-- Two-column layout -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Channel Status -->
+        <div class="lg:col-span-2 bg-surface border border-border-d rounded-xl overflow-hidden">
+          <div class="p-4 border-b border-white/10 bg-white/5 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">send</span>
+            <h3 class="font-bold text-white">Channel Status</h3>
+          </div>
+          <div id="channel-grid" class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="text-sm text-slate-500 p-4">Loading channels...</div>
+          </div>
+        </div>
+
+        <!-- System Info -->
+        <div class="bg-surface border border-border-d rounded-xl overflow-hidden">
+          <div class="p-4 border-b border-white/10 bg-white/5 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">monitoring</span>
+            <h3 class="font-bold text-white">System Info</h3>
+          </div>
+          <div id="system-info" class="p-4 space-y-3 font-mono text-xs text-slate-400">
+            <div class="text-sm text-slate-500">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tools Grid -->
+      <div class="mt-6 bg-surface border border-border-d rounded-xl overflow-hidden">
+        <div class="p-4 border-b border-white/10 bg-white/5 flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">construction</span>
+          <h3 class="font-bold text-white">Registered Tools</h3>
+        </div>
+        <div id="tools-grid" class="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div class="text-sm text-slate-500 p-4">Loading tools...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: Bots Management -->
+    <div id="page-bots" class="page p-6 fade-in hidden">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+        <div>
+          <h1 class="text-4xl font-black tracking-tighter uppercase mb-2">Bot <span class="text-primary italic">Fleet</span></h1>
+          <p class="text-slate-400 font-mono text-sm">Manage, start, stop, and configure your channel bots</p>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="showAddBotModal()" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-primary/80 transition-all">
+            <span class="material-symbols-outlined text-sm">add</span>ADD BOT
+          </button>
+          <button onclick="loadBotsPage()" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all">
+            <span class="material-symbols-outlined text-sm">refresh</span>REFRESH
+          </button>
+        </div>
+      </div>
+
+      <!-- Bot Stats -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-surface border border-border-d rounded-xl p-5 flex flex-col gap-1">
+          <span class="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Bots</span>
+          <span id="bot-stat-total" class="text-2xl font-bold text-white tracking-tighter">--</span>
+        </div>
+        <div class="bg-surface border border-border-d rounded-xl p-5 flex flex-col gap-1">
+          <span class="text-slate-500 text-xs font-bold uppercase tracking-wider">Running</span>
+          <span id="bot-stat-running" class="text-2xl font-bold text-success tracking-tighter">--</span>
+        </div>
+        <div class="bg-surface border border-border-d rounded-xl p-5 flex flex-col gap-1">
+          <span class="text-slate-500 text-xs font-bold uppercase tracking-wider">Stopped</span>
+          <span id="bot-stat-stopped" class="text-2xl font-bold text-slate-400 tracking-tighter">--</span>
+        </div>
+        <div class="bg-surface border border-border-d rounded-xl p-5 flex flex-col gap-1">
+          <span class="text-slate-500 text-xs font-bold uppercase tracking-wider">Types</span>
+          <span id="bot-stat-types" class="text-2xl font-bold text-primary tracking-tighter">--</span>
+        </div>
+      </div>
+
+      <!-- Bot Grid -->
+      <div id="bots-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div class="text-sm text-slate-500 p-4">Loading bots...</div>
+      </div>
+
+      <!-- Bot Creation Wizard Modal -->
+      <div id="add-bot-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-surface border border-border-d rounded-2xl w-full max-w-2xl max-h-[88vh] overflow-y-auto">
+          <!-- Header -->
+          <div class="p-6 border-b border-white/10 flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold" id="wizard-title">Add New Bot</h3>
+              <p class="text-xs text-slate-500 mt-0.5" id="wizard-subtitle">Choose how to configure your bot</p>
+            </div>
+            <button onclick="hideAddBotModal()" class="text-slate-400 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+          </div>
+          <!-- Progress Steps -->
+          <div class="px-6 py-3 border-b border-white/5 flex items-center gap-3 text-xs font-bold uppercase">
+            <span id="wstep-1" class="text-primary">1. Type</span>
+            <span class="text-slate-700">→</span>
+            <span id="wstep-2" class="text-slate-600">2. Configure</span>
+            <span class="text-slate-700">→</span>
+            <span id="wstep-3" class="text-slate-600">3. Launch</span>
+          </div>
+
+          <!-- Step 1: Choose mode -->
+          <div id="wiz-s1" class="p-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button onclick="selectWizardMode('template')" class="p-6 bg-bg-dark border-2 border-border-d rounded-xl hover:border-primary transition-all text-left">
+                <span class="material-symbols-outlined text-primary text-3xl mb-3 block">auto_awesome</span>
+                <h4 class="font-bold text-white mb-1">From Template</h4>
+                <p class="text-xs text-slate-500">Use a pre-built personality with guided configuration</p>
+              </button>
+              <button onclick="selectWizardMode('manual')" class="p-6 bg-bg-dark border-2 border-border-d rounded-xl hover:border-primary transition-all text-left">
+                <span class="material-symbols-outlined text-slate-400 text-3xl mb-3 block">tune</span>
+                <h4 class="font-bold text-white mb-1">Manual Setup</h4>
+                <p class="text-xs text-slate-500">Configure bot type and token directly</p>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2T: Pick a template -->
+          <div id="wiz-s2t" class="p-6 hidden">
+            <p class="text-xs text-slate-500 mb-4 uppercase font-bold tracking-wider">Select a template</p>
+            <div id="template-cards" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div class="text-slate-500 text-sm">Loading templates...</div>
+            </div>
+            <button onclick="wizBack()" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold hover:bg-white/10">Back</button>
+          </div>
+
+          <!-- Step 2M: Manual form -->
+          <div id="wiz-s2m" class="p-6 hidden space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Bot Type</label>
+              <select id="new-bot-type" class="w-full bg-bg-dark border border-border-d rounded-lg px-3 py-2 text-sm text-white">
+                <option value="">Select type...</option>
+                <option value="telegram">Telegram</option>
+                <option value="discord">Discord</option>
+                <option value="slack">Slack</option>
+                <option value="whatsapp">WhatsApp</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Token / API Key</label>
+              <input id="new-bot-token" type="password" class="w-full bg-bg-dark border border-border-d rounded-lg px-3 py-2 text-sm text-white" placeholder="Bot token or API key"/>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Allowed Contacts (comma-separated)</label>
+              <input id="new-bot-allow" type="text" class="w-full bg-bg-dark border border-border-d rounded-lg px-3 py-2 text-sm text-white" placeholder="user1,user2 (empty = all)"/>
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="new-bot-autostart" type="checkbox" checked class="rounded bg-bg-dark border-border-d text-primary"/>
+              <label class="text-sm text-slate-300">Auto-start after creation</label>
+            </div>
+            <div class="flex justify-between pt-2">
+              <button onclick="wizBack()" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold hover:bg-white/10">Back</button>
+              <button onclick="createBot()" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/80">Create Bot</button>
+            </div>
+          </div>
+
+          <!-- Step 3T: Template param form -->
+          <div id="wiz-s3t" class="p-6 hidden">
+            <div class="mb-5 p-4 bg-bg-dark border border-border-d rounded-xl flex items-center gap-4">
+              <span class="material-symbols-outlined text-primary text-2xl" id="tpl-icon">auto_awesome</span>
+              <div>
+                <h4 id="tpl-name" class="font-bold text-white">Template</h4>
+                <p id="tpl-desc" class="text-xs text-slate-500 mt-0.5"></p>
+                <p id="tpl-channel" class="text-xs text-slate-600 font-mono mt-1"></p>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500 mb-3 uppercase font-bold tracking-wider">Configure Parameters</p>
+            <div id="tpl-params-form" class="space-y-4 mb-6"></div>
+            <div class="flex justify-between">
+              <button onclick="wizBack()" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold hover:bg-white/10">Back</button>
+              <button onclick="launchFromTemplate()" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/80 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">rocket_launch</span>Launch Bot
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: Tasks / Kanban -->
+    <div id="page-tasks" class="page p-6 fade-in hidden">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+        <div>
+          <h1 class="text-4xl font-black tracking-tighter uppercase mb-2">Task <span class="text-primary italic">Board</span></h1>
+          <p class="text-slate-400 font-mono text-sm">Universal task spine — all work flows through here</p>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="showAddTaskModal()" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-primary/80 transition-all">
+            <span class="material-symbols-outlined text-sm">add</span>ADD TASK
+          </button>
+          <button onclick="loadTasksPage()" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all">
+            <span class="material-symbols-outlined text-sm">refresh</span>REFRESH
+          </button>
+        </div>
+      </div>
+
+      <!-- Task Filters -->
+      <div class="flex flex-wrap items-center gap-3 mb-6">
+        <select id="task-filter-status" onchange="loadTasksPage()" class="bg-surface border border-border-d rounded-lg px-3 py-2 text-sm text-white">
+          <option value="">All Status</option>
+          <option value="inbox">Inbox</option>
+          <option value="planned">Planned</option>
+          <option value="running">Running</option>
+          <option value="review">Review</option>
+          <option value="done">Done</option>
+          <option value="blocked">Blocked</option>
+        </select>
+        <select id="task-filter-category" onchange="loadTasksPage()" class="bg-surface border border-border-d rounded-lg px-3 py-2 text-sm text-white">
+          <option value="">All Categories</option>
+          <option value="code">Code</option>
+          <option value="bug">Bug</option>
+          <option value="feature">Feature</option>
+          <option value="infra">Infra</option>
+          <option value="design">Design</option>
+          <option value="research">Research</option>
+          <option value="ops">Ops</option>
+          <option value="personal">Personal</option>
+        </select>
+        <input id="task-filter-search" onkeyup="loadTasksPage()" class="bg-surface border border-border-d rounded-lg px-3 py-2 text-sm text-white w-48" placeholder="Search tasks..."/>
+      </div>
+
+      <!-- Task Stats -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <div class="bg-surface border border-border-d rounded-xl p-4 flex flex-col gap-1">
+          <span class="text-slate-500 text-[10px] font-bold uppercase">Total</span>
+          <span id="task-stat-total" class="text-xl font-bold text-white">--</span>
+        </div>
+        <div class="bg-surface border border-success/20 rounded-xl p-4 flex flex-col gap-1">
+          <span class="text-slate-500 text-[10px] font-bold uppercase">Todo</span>
+          <span id="task-stat-todo" class="text-xl font-bold text-accent-cyan">--</span>
+        </div>
+        <div class="bg-surface border border-primary/20 rounded-xl p-4 flex flex-col gap-1">
+          <span class="text-slate-500 text-[10px] font-bold uppercase">In Progress</span>
+          <span id="task-stat-progress" class="text-xl font-bold text-primary">--</span>
+        </div>
+        <div class="bg-surface border border-success/20 rounded-xl p-4 flex flex-col gap-1">
+          <span class="text-slate-500 text-[10px] font-bold uppercase">Done</span>
+          <span id="task-stat-done" class="text-xl font-bold text-success">--</span>
+        </div>
+        <div class="bg-surface border border-error/20 rounded-xl p-4 flex flex-col gap-1">
+          <span class="text-slate-500 text-[10px] font-bold uppercase">Blocked</span>
+          <span id="task-stat-blocked" class="text-xl font-bold text-error">--</span>
+        </div>
+      </div>
+
+      <!-- Task Table -->
+      <div class="bg-surface border border-border-d rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-white/5 text-slate-500 text-[10px] uppercase tracking-widest font-bold">
+              <tr>
+                <th class="px-4 py-3">Title</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3">Category</th>
+                <th class="px-4 py-3">Priority</th>
+                <th class="px-4 py-3">Source</th>
+                <th class="px-4 py-3">Updated</th>
+                <th class="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tasks-body" class="divide-y divide-white/5">
+              <tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">Loading tasks...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add Task Modal -->
+      <div id="add-task-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-surface border border-border-d rounded-2xl w-full max-w-lg">
+          <div class="p-6 border-b border-white/10 flex items-center justify-between">
+            <h3 class="text-lg font-bold">Create Task</h3>
+            <button onclick="hideAddTaskModal()" class="text-slate-400 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+          </div>
+          <div class="p-6 space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Title</label>
+              <input id="new-task-title" type="text" class="w-full bg-bg-dark border border-border-d rounded-lg px-3 py-2 text-sm text-white" placeholder="Task title"/>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Description</label>
+              <textarea id="new-task-desc" class="w-full bg-bg-dark border border-border-d rounded-lg px-3 py-2 text-sm text-white h-20" placeholder="Optional description"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Category</label>
+                <select id="new-task-category" class="w-full bg-bg-dark border border-border-d rounded-lg px-3 py-2 text-sm text-white">
+                  <option value="feature">Feature</option>
+                  <option value="bug">Bug</option>
+                  <option value="chore">Chore</option>
+                  <option value="research">Research</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Priority</label>
+                <select id="new-task-priority" class="w-full bg-bg-dark border border-border-d rounded-lg px-3 py-2 text-sm text-white">
+                  <option value="2">Medium</option>
+                  <option value="3">High</option>
+                  <option value="1">Low</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="p-6 border-t border-white/10 flex justify-end gap-3">
+            <button onclick="hideAddTaskModal()" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold hover:bg-white/10">Cancel</button>
+            <button onclick="createTask()" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/80">Create</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: Agents / Channels Management -->
+    <div id="page-agents" class="page p-6 fade-in hidden">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+        <div>
+          <h1 class="text-4xl font-black tracking-tighter uppercase mb-2">Task <span class="text-primary italic">Orchestrator</span></h1>
+          <p class="text-slate-400 font-mono text-sm">Swarm routing, agent capabilities & task assignments</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div class="xl:col-span-2 space-y-6">
+          <!-- Agent Status -->
+          <section class="bg-surface border border-border-d rounded-xl p-6">
+            <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">settings</span>Agent Configuration
+            </h3>
+            <div id="agent-config" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="text-sm text-slate-500">Loading agent config...</div>
+            </div>
+          </section>
+
+          <!-- Channel Fleet -->
+          <section>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-bold">Active Fleet</h3>
+              <div id="fleet-count" class="text-xs text-slate-500 font-medium">-- Channels</div>
+            </div>
+            <div id="agent-fleet" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="text-sm text-slate-500 p-4">Loading fleet...</div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Sessions Sidebar -->
+        <div class="space-y-6">
+          <section class="bg-surface border border-border-d rounded-xl overflow-hidden">
+            <div class="p-4 border-b border-white/10 bg-white/5 flex items-center gap-2">
+              <div class="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
+              <h3 class="text-xs font-bold uppercase tracking-widest text-slate-300">Active Sessions</h3>
+            </div>
+            <div id="sessions-list" class="p-4 space-y-2 max-h-[60vh] overflow-y-auto scrollbar-thin">
+              <div class="text-sm text-slate-500">Loading sessions...</div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: Workflows / Cron -->
+    <div id="page-workflows" class="page p-6 fade-in hidden">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+        <div>
+          <h1 class="text-4xl font-black tracking-tighter uppercase mb-2">Pipeline <span class="text-primary italic">Manager</span></h1>
+          <p class="text-slate-400 font-mono text-sm">Scheduled tasks and automation workflows</p>
+        </div>
+      </div>
+
+      <!-- Cron Status -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-surface border border-border-d rounded-xl p-5">
+          <span class="text-slate-500 text-xs font-bold uppercase">Cron Service</span>
+          <div class="flex items-center gap-2 mt-1">
+            <span id="cron-status-dot" class="size-2 rounded-full bg-slate-500"></span>
+            <span id="cron-status-text" class="text-lg font-bold text-white">--</span>
+          </div>
+        </div>
+        <div class="bg-surface border border-border-d rounded-xl p-5">
+          <span class="text-slate-500 text-xs font-bold uppercase">Total Jobs</span>
+          <span id="cron-total" class="text-2xl font-bold text-white block mt-1">--</span>
+        </div>
+        <div class="bg-surface border border-border-d rounded-xl p-5">
+          <span class="text-slate-500 text-xs font-bold uppercase">Next Wake</span>
+          <span id="cron-next" class="text-lg font-bold text-white block mt-1 font-mono">--</span>
+        </div>
+      </div>
+
+      <!-- Jobs Table -->
+      <div class="bg-surface border border-border-d rounded-xl overflow-hidden">
+        <div class="p-4 border-b border-white/10 bg-white/5 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary">schedule</span>
+            <h3 class="font-bold text-white">Scheduled Jobs</h3>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-white/5 text-slate-500 text-[10px] uppercase tracking-widest font-bold">
+              <tr>
+                <th class="px-6 py-3">ID</th>
+                <th class="px-6 py-3">Name</th>
+                <th class="px-6 py-3">Schedule</th>
+                <th class="px-6 py-3">Status</th>
+                <th class="px-6 py-3 text-right">Last Run</th>
+              </tr>
+            </thead>
+            <tbody id="cron-jobs-body" class="divide-y divide-white/5">
+              <tr><td colspan="5" class="px-6 py-4 text-slate-500">Loading jobs...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: Logs -->
+    <div id="page-logs" class="page p-6 fade-in hidden">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+        <div>
+          <h1 class="text-4xl font-black tracking-tighter uppercase mb-2">Execution <span class="text-primary italic">Logs</span></h1>
+          <p class="text-slate-400 font-mono text-sm">Live event stream from the agent system</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <button onclick="clearLogs()" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold hover:bg-white/10 transition-all">Clear</button>
+          <button onclick="toggleLogPause()" id="log-pause-btn" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/80 transition-all">Pause</button>
+        </div>
+      </div>
+
+      <!-- Log Filters -->
+      <div class="flex items-center gap-2 mb-4 flex-wrap">
+        <div class="flex h-8 items-center gap-2 rounded-lg bg-primary/20 border border-primary/40 px-3 cursor-pointer" onclick="toggleLogFilter('info')">
+          <div class="size-2 rounded-full bg-primary"></div>
+          <p class="text-primary text-[10px] font-bold uppercase tracking-wider">Info</p>
+        </div>
+        <div class="flex h-8 items-center gap-2 rounded-lg bg-success/10 border border-success/30 px-3 cursor-pointer" onclick="toggleLogFilter('success')">
+          <div class="size-2 rounded-full bg-success"></div>
+          <p class="text-success text-[10px] font-bold uppercase tracking-wider">Success</p>
+        </div>
+        <div class="flex h-8 items-center gap-2 rounded-lg bg-warn/10 border border-warn/30 px-3 cursor-pointer" onclick="toggleLogFilter('warn')">
+          <div class="size-2 rounded-full bg-warn"></div>
+          <p class="text-warn text-[10px] font-bold uppercase tracking-wider">Warn</p>
+        </div>
+        <div class="flex h-8 items-center gap-2 rounded-lg bg-error/10 border border-error/30 px-3 cursor-pointer" onclick="toggleLogFilter('error')">
+          <div class="size-2 rounded-full bg-error"></div>
+          <p class="text-error text-[10px] font-bold uppercase tracking-wider">Error</p>
+        </div>
+      </div>
+
+      <!-- Terminal -->
+      <div class="bg-[#0a0d14] border border-primary/20 rounded-xl overflow-hidden shadow-2xl">
+        <div class="bg-white/5 border-b border-white/10 px-4 py-2 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="flex gap-1.5 mr-4">
+              <div class="size-3 rounded-full bg-error/40"></div>
+              <div class="size-3 rounded-full bg-warn/40"></div>
+              <div class="size-3 rounded-full bg-success/40"></div>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono uppercase">picoclaw-events.log</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="log-count" class="text-[10px] text-slate-500 font-mono">0 events</span>
+            <span id="ws-status" class="text-[10px] text-slate-500 font-mono">WS: --</span>
+          </div>
+        </div>
+        <div id="log-terminal" class="h-[60vh] overflow-y-auto font-mono text-[13px] leading-6 p-4 scrollbar-thin">
+          <div class="text-slate-600">Waiting for events...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: Chat -->
+    <div id="page-chat" class="page p-6 fade-in hidden">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+        <div>
+          <h1 class="text-4xl font-black tracking-tighter uppercase mb-2">Agent <span class="text-primary italic">Chat</span></h1>
+          <p class="text-slate-400 font-mono text-sm">Direct conversation with your PicoClaw agent</p>
+        </div>
+      </div>
+
+      <div class="bg-surface border border-border-d rounded-xl overflow-hidden flex flex-col" style="height: calc(100vh - 240px);">
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
+          <div class="flex items-start gap-3">
+            <div class="size-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-primary text-sm">smart_toy</span>
+            </div>
+            <div class="bg-white/5 rounded-lg p-4 max-w-2xl">
+              <p class="text-sm text-slate-300">Hello! I'm your PicoClaw agent. Send me a message and I'll process it through the agent loop with all available tools.</p>
+            </div>
+          </div>
+        </div>
+        <div class="p-4 border-t border-white/10 bg-white/5">
+          <form onsubmit="sendChat(event)" class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-primary">keyboard_double_arrow_right</span>
+            <input id="chat-input" class="flex-1 bg-transparent border-none text-white focus:ring-0 placeholder:text-slate-600 font-mono text-sm p-0" placeholder="Type your message..." type="text" autocomplete="off"/>
+            <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/80 transition-all">Send</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: Activity Feed -->
+    <div id="page-activity" class="page p-6 fade-in hidden">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
+        <div>
+          <h1 class="text-4xl font-black tracking-tighter uppercase mb-2">Activity <span class="text-primary italic">Feed</span></h1>
+          <p class="text-slate-400 font-mono text-sm">Real-time workflow events — what the system is doing right now</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <select id="activity-filter-source" onchange="filterActivity()" class="bg-surface border border-border-d rounded-lg px-3 py-2 text-sm text-white">
+            <option value="">All Sources</option>
+            <option value="ide-monitor">IDE Monitor</option>
+            <option value="bot">Bots</option>
+            <option value="agent">Agent</option>
+            <option value="cron">Cron</option>
+            <option value="ws">WebSocket</option>
+          </select>
+          <button onclick="clearActivity()" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold hover:bg-white/10">Clear</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-surface border border-border-d rounded-xl p-4">
+          <span class="text-slate-500 text-xs font-bold uppercase">Total Events</span>
+          <span id="act-total" class="text-2xl font-bold text-white block mt-1">0</span>
+        </div>
+        <div class="bg-surface border border-primary/20 rounded-xl p-4">
+          <span class="text-slate-500 text-xs font-bold uppercase">High Confidence</span>
+          <span id="act-high" class="text-2xl font-bold text-primary block mt-1">0</span>
+        </div>
+        <div class="bg-surface border border-accent-cyan/20 rounded-xl p-4">
+          <span class="text-slate-500 text-xs font-bold uppercase">Sources</span>
+          <span id="act-sources" class="text-2xl font-bold text-accent-cyan block mt-1">0</span>
+        </div>
+        <div class="bg-surface border border-success/20 rounded-xl p-4">
+          <span class="text-slate-500 text-xs font-bold uppercase">Rate / min</span>
+          <span id="act-rate" class="text-2xl font-bold text-success block mt-1">0</span>
+        </div>
+      </div>
+      <div class="bg-surface border border-border-d rounded-xl overflow-hidden">
+        <div class="p-4 border-b border-white/10 bg-white/5 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="size-2 rounded-full bg-accent-green animate-pulse"></span>
+            <span class="text-xs font-bold uppercase tracking-widest text-slate-300">Live Events</span>
+          </div>
+          <span id="act-count-label" class="text-xs text-slate-500">0 events</span>
+        </div>
+        <div id="activity-feed" class="h-[60vh] overflow-y-auto p-4 space-y-2 scrollbar-thin">
+          <div class="text-center text-slate-600 py-8">Waiting for events...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: Integrations -->
+    <div id="page-integrations" class="page p-6 fade-in hidden">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+        <div>
+          <h1 class="text-4xl font-black tracking-tighter uppercase mb-2">Integration <span class="text-primary italic">Hub</span></h1>
+          <p class="text-slate-400 font-mono text-sm">External signal sources feeding the workflow engine</p>
+        </div>
+        <button onclick="loadIntegrationsPage()" class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition-all">
+          <span class="material-symbols-outlined text-sm">refresh</span>REFRESH
+        </button>
+      </div>
+      <div id="integrations-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div class="text-sm text-slate-500 p-4">Loading integrations...</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// === State ===
+const state = {
+  ws: null,
+  wsReconnect: null,
+  logsPaused: false,
+  logFilters: new Set(['info','success','warn','error']),
+  logs: [],
+  maxLogs: 500,
+  token: '',
+};
+
+// === API Layer ===
+const API_BASE = window.location.origin;
+
+function authHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  if (state.token) h['Authorization'] = `Bearer ${state.token}`;
+  return h;
+}
+
+async function api(path) {
+  try {
+    const headers = {};
+    if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+    const res = await fetch(`${API_BASE}${path}`, { headers });
+    if (res.status === 401) { promptToken(); return null; }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.error(`API error ${path}:`, e);
+    return null;
+  }
+}
+
+async function apiPost(path, body) {
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) { promptToken(); return null; }
+    return await res.json();
+  } catch (e) {
+    console.error(`API POST error ${path}:`, e);
+    return null;
+  }
+}
+
+async function apiPut(path, body) {
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) { promptToken(); return null; }
+    return await res.json();
+  } catch (e) {
+    console.error(`API PUT error ${path}:`, e);
+    return null;
+  }
+}
+
+async function apiDelete(path) {
+  try {
+    const headers = {};
+    if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+    const res = await fetch(`${API_BASE}${path}`, { method: 'DELETE', headers });
+    if (res.status === 401) { promptToken(); return null; }
+    return await res.json();
+  } catch (e) {
+    console.error(`API DELETE error ${path}:`, e);
+    return null;
+  }
+}
+
+function promptToken() {
+  const tok = prompt('API token required. Enter your PicoClaw API key:');
+  if (tok) {
+    state.token = tok.trim();
+    localStorage.setItem('picoclaw_token', state.token);
+    location.reload();
+  }
+}
+
+// === WebSocket ===
+function connectWS() {
+  const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const tokenParam = state.token ? `?token=${encodeURIComponent(state.token)}` : '';
+  const wsUrl = `${wsProtocol}//${location.host}/api/ws${tokenParam}`;
+
+  try {
+    state.ws = new WebSocket(wsUrl);
+  } catch (e) {
+    updateWSStatus('error');
+    scheduleReconnect();
+    return;
+  }
+
+  state.ws.onopen = () => {
+    updateWSStatus('connected');
+    if (state.wsReconnect) {
+      clearTimeout(state.wsReconnect);
+      state.wsReconnect = null;
+    }
+  };
+
+  state.ws.onmessage = (event) => {
+    // Handle newline-separated messages
+    const messages = event.data.split('\n');
+    for (const msg of messages) {
+      if (!msg.trim()) continue;
+      try {
+        const data = JSON.parse(msg);
+        handleWSEvent(data);
+      } catch (e) {}
+    }
+  };
+
+  state.ws.onclose = () => {
+    updateWSStatus('disconnected');
+    scheduleReconnect();
+  };
+
+  state.ws.onerror = () => {
+    updateWSStatus('error');
+  };
+}
+
+function scheduleReconnect() {
+  if (!state.wsReconnect) {
+    state.wsReconnect = setTimeout(() => {
+      state.wsReconnect = null;
+      connectWS();
+    }, 3000);
+  }
+}
+
+function updateWSStatus(status) {
+  const el = document.getElementById('ws-status');
+  if (!el) return;
+  const colors = { connected: 'text-success', disconnected: 'text-warn', error: 'text-error' };
+  el.className = `text-[10px] font-mono ${colors[status] || 'text-slate-500'}`;
+  el.textContent = `WS: ${status.toUpperCase()}`;
+}
+
+function getEventSource(event) {
+  if (event.source) return event.source;
+  if (event.type?.startsWith('bot.')) return 'bot';
+  if (event.type?.startsWith('task.')) return 'tasks';
+  if (event.type?.startsWith('message.')) return event.data?.channel || 'bot';
+  if (event.type === 'log') return event.data?.source || 'agent';
+  if (event.type?.startsWith('workflow.') || event.type?.startsWith('ide.')) return 'ide-monitor';
+  return 'ws';
+}
+
+function handleWSEvent(event) {
+  if (event.type === 'initial_state') {
+    updateDashboardFromState(event.data);
+  } else if (event.type === 'status_update') {
+    updateLiveStatus(event.data);
+  } else if (event.type === 'log') {
+    appendLog(event.data);
+  }
+
+  // Push all non-housekeeping events to the activity feed
+  if (event.type && event.type !== 'initial_state' && event.type !== 'status_update') {
+    pushActivity({
+      type: event.type,
+      source: getEventSource(event),
+      data: event.data,
+      timestamp: event.timestamp,
+      confidence: event.confidence,
+      message: event.type === 'log' ? (event.data?.message || '') : '',
+    });
+  }
+
+  // Handle bot lifecycle events
+  if (event.type && event.type.startsWith('bot.')) {
+    const activePage = document.querySelector('.page:not(.hidden)')?.id;
+    if (activePage === 'page-bots') loadBotsPage();
+    appendLog({
+      level: event.type === 'bot.error' ? 'error' : 'success',
+      source: 'bots',
+      message: `[${event.type}] ${event.data?.bot_type || ''} ${event.data?.bot_name || event.data?.bot_id || ''}`,
+      timestamp: event.timestamp,
+    });
+    return;
+  }
+
+  // Handle task events
+  if (event.type && event.type.startsWith('task.')) {
+    const activePage = document.querySelector('.page:not(.hidden)')?.id;
+    if (activePage === 'page-tasks') loadTasksPage();
+    appendLog({
+      level: event.type === 'task.failed' ? 'error' : 'info',
+      source: 'tasks',
+      message: `[${event.type}] ${event.data?.title || event.data?.task_id || ''}`,
+      timestamp: event.timestamp,
+    });
+    return;
+  }
+
+  // Handle message events
+  if (event.type && event.type.startsWith('message.')) {
+    appendLog({
+      level: 'info',
+      source: event.data?.channel || 'msg',
+      message: `[${event.type}] ${event.data?.preview || ''}`,
+      timestamp: event.timestamp,
+    });
+    return;
+  }
+
+  // Log all other WS events to the terminal
+  if (!state.logsPaused) {
+    appendLog({
+      level: 'info',
+      source: 'ws',
+      message: `[${event.type}] ${JSON.stringify(event.data).substring(0, 200)}`,
+      timestamp: event.timestamp,
+    });
+  }
+}
+
+function updateDashboardFromState(data) {
+  if (data.agent) {
+    setText('sidebar-model', data.agent.model || '--');
+  }
+  if (data.tools) {
+    setText('sidebar-tools', Array.isArray(data.tools) ? data.tools.length : '--');
+  }
+  if (data.sessions !== undefined) {
+    setText('sidebar-sessions', data.sessions);
+  }
+  if (data.uptime_seconds !== undefined) {
+    setText('uptime-badge', formatUptime(data.uptime_seconds), 'span:last-child');
+  }
+  updateHealthBadge(true);
+}
+
+function updateLiveStatus(data) {
+  if (data.uptime_seconds !== undefined) {
+    const badge = document.querySelector('#uptime-badge span:last-child');
+    if (badge) badge.textContent = formatUptime(data.uptime_seconds);
+  }
+}
+
+// === Data Loading ===
+async function refreshData() {
+  const [status, info, tools, sessions, cronJobs, cronStatus] = await Promise.all([
+    api('/api/system/status'),
+    api('/api/system/info'),
+    api('/api/tools'),
+    api('/api/sessions'),
+    api('/api/cron/jobs'),
+    api('/api/cron/status'),
+  ]);
+
+  if (status) renderSystemStatus(status);
+  if (info) renderSystemInfo(info);
+  if (tools) renderTools(tools);
+  if (sessions) renderSessions(sessions);
+  if (cronJobs !== null) renderCronJobs(cronJobs || []);
+  if (cronStatus) renderCronStatus(cronStatus);
+  updateHealthBadge(!!status);
+}
+
+// === Renderers ===
+function renderSystemStatus(data) {
+  setText('stat-uptime', data.uptime_human || '--');
+  setText('sidebar-model', data.agent?.model || '--');
+  setText('sidebar-tools', data.agent?.tools || '--');
+  setText('stat-sessions', data.sessions || '0');
+  setText('sidebar-sessions', data.sessions || '0');
+
+  // Count channels
+  const channels = data.channels || {};
+  const channelNames = Object.keys(channels);
+  const running = channelNames.filter(c => channels[c]?.running).length;
+  setText('stat-channels', `${running}/${channelNames.length}`);
+
+  // Render channel grid
+  const grid = document.getElementById('channel-grid');
+  if (!grid) return;
+
+  if (channelNames.length === 0) {
+    grid.innerHTML = `<div class="col-span-2 text-sm text-slate-500 p-4">No channels configured</div>`;
+    return;
+  }
+
+  grid.innerHTML = channelNames.map(name => {
+    const ch = channels[name];
+    const isRunning = ch?.running;
+    const icon = getChannelIcon(name);
+    const borderColor = isRunning ? 'border-success/30' : 'border-white/10';
+    const bgColor = isRunning ? 'bg-success/5' : 'bg-white/5';
+    const statusColor = isRunning ? 'text-success' : 'text-slate-500';
+    const statusText = isRunning ? 'ONLINE' : 'OFFLINE';
+    const dotColor = isRunning ? 'bg-success' : 'bg-slate-600';
+
+    return `
+      <div class="flex items-center justify-between p-3 rounded-lg border ${borderColor} ${bgColor}">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined ${statusColor} text-lg">${icon}</span>
+          <div>
+            <span class="text-sm font-bold capitalize">${name}</span>
+            <div class="flex items-center gap-1.5">
+              <span class="size-1.5 rounded-full ${dotColor}"></span>
+              <span class="text-[10px] uppercase font-bold ${statusColor} tracking-wider">${statusText}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderSystemInfo(data) {
+  const el = document.getElementById('system-info');
+  if (!el) return;
+  setText('stat-goroutines', data.goroutines || '--');
+
+  el.innerHTML = `
+    <div class="flex justify-between"><span class="text-slate-500">Hostname</span><span class="text-white">${data.hostname || '--'}</span></div>
+    <div class="flex justify-between"><span class="text-slate-500">Go Version</span><span class="text-accent-cyan">${data.go_version || '--'}</span></div>
+    <div class="flex justify-between"><span class="text-slate-500">OS / Arch</span><span class="text-white">${data.os || '--'}/${data.arch || '--'}</span></div>
+    <div class="flex justify-between"><span class="text-slate-500">CPUs</span><span class="text-white">${data.cpus || '--'}</span></div>
+    <div class="flex justify-between"><span class="text-slate-500">Memory</span><span class="text-white">${(data.memory_mb || 0).toFixed(1)} MB</span></div>
+    <div class="flex justify-between"><span class="text-slate-500">Sys Memory</span><span class="text-white">${(data.sys_mb || 0).toFixed(1)} MB</span></div>
+    <div class="flex justify-between"><span class="text-slate-500">GC Cycles</span><span class="text-white">${data.gc_cycles || 0}</span></div>
+    <div class="flex justify-between"><span class="text-slate-500">Goroutines</span><span class="text-primary">${data.goroutines || '--'}</span></div>
+    <div class="flex justify-between"><span class="text-slate-500">Workspace</span><span class="text-white truncate max-w-[150px]" title="${data.workspace || ''}">${data.workspace || '--'}</span></div>
+  `;
+}
+
+function renderTools(tools) {
+  const grid = document.getElementById('tools-grid');
+  if (!grid) return;
+
+  if (!tools || tools.length === 0) {
+    grid.innerHTML = `<div class="col-span-5 text-sm text-slate-500 p-4">No tools registered</div>`;
+    return;
+  }
+
+  grid.innerHTML = tools.map(tool => {
+    const name = tool?.function?.name || 'unknown';
+    const desc = tool?.function?.description || '';
+    const shortDesc = desc.length > 80 ? desc.substring(0, 80) + '...' : desc;
+    const icon = getToolIcon(name);
+
+    return `
+      <div class="p-3 bg-bg-dark border border-border-d rounded-lg hover:border-primary/50 transition-all group cursor-default">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="material-symbols-outlined text-primary text-lg">${icon}</span>
+          <span class="text-xs font-bold text-white">${name}</span>
+        </div>
+        <p class="text-[10px] text-slate-500 leading-relaxed">${shortDesc}</p>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderSessions(sessions) {
+  const list = document.getElementById('sessions-list');
+  if (!list) return;
+
+  if (!sessions || sessions.length === 0) {
+    list.innerHTML = `<div class="text-sm text-slate-500">No active sessions</div>`;
+    return;
+  }
+
+  // Sort by updated desc
+  sessions.sort((a, b) => new Date(b.updated) - new Date(a.updated));
+
+  list.innerHTML = sessions.map(s => {
+    const parts = s.key.split(':');
+    const channel = parts[0] || 'unknown';
+    const chatId = parts.slice(1).join(':') || '--';
+    const icon = getChannelIcon(channel);
+    const timeAgo = formatTimeAgo(s.updated);
+
+    return `
+      <div class="flex items-center gap-3 p-3 rounded-lg bg-bg-dark border border-border-d hover:border-primary/30 transition-all">
+        <span class="material-symbols-outlined text-primary text-sm">${icon}</span>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white truncate">${channel}:${chatId.substring(0, 12)}</span>
+            <span class="text-[10px] text-slate-500 shrink-0 ml-2">${timeAgo}</span>
+          </div>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span class="text-[10px] text-slate-500">${s.message_count || 0} messages</span>
+            ${s.summary ? '<span class="text-[10px] text-primary">summarized</span>' : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderCronJobs(jobs) {
+  const body = document.getElementById('cron-jobs-body');
+  if (!body) return;
+
+  if (!jobs || jobs.length === 0) {
+    body.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-slate-500 text-center">No scheduled jobs. Use the agent to create cron tasks.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = jobs.map(job => {
+    const statusColor = job.enabled ? 'text-success' : 'text-slate-500';
+    const statusText = job.enabled ? 'Active' : 'Disabled';
+    const dotColor = job.enabled ? 'bg-success' : 'bg-slate-600';
+    const scheduleText = formatSchedule(job.schedule);
+    const lastRun = job.state?.lastRunAtMs ? new Date(job.state.lastRunAtMs).toLocaleString() : 'Never';
+
+    return `
+      <tr class="hover:bg-white/5 transition-colors">
+        <td class="px-6 py-4 font-mono text-xs text-primary">${(job.id || '').substring(0, 8)}</td>
+        <td class="px-6 py-4 text-sm text-white font-medium">${job.name || 'Untitled'}</td>
+        <td class="px-6 py-4 text-xs text-slate-400 font-mono">${scheduleText}</td>
+        <td class="px-6 py-4">
+          <span class="flex items-center gap-1.5 ${statusColor}">
+            <span class="size-1.5 rounded-full ${dotColor}"></span>${statusText}
+          </span>
+        </td>
+        <td class="px-6 py-4 text-right text-xs text-slate-500">${lastRun}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderCronStatus(data) {
+  const dot = document.getElementById('cron-status-dot');
+  const text = document.getElementById('cron-status-text');
+  if (dot && text) {
+    const running = data.enabled;
+    dot.className = `size-2 rounded-full ${running ? 'bg-success animate-pulse' : 'bg-slate-500'}`;
+    text.textContent = running ? 'Running' : 'Stopped';
+  }
+  setText('cron-total', data.jobs || '0');
+  if (data.nextWakeAtMS) {
+    setText('cron-next', new Date(data.nextWakeAtMS).toLocaleString());
+  } else {
+    setText('cron-next', 'None');
+  }
+}
+
+// === Agent Config ===
+function renderAgentConfig(data) {
+  const el = document.getElementById('agent-config');
+  if (!el) return;
+
+  el.innerHTML = `
+    <div class="flex items-center justify-between p-4 bg-bg-dark border border-border-d rounded-lg">
+      <div>
+        <p class="text-sm font-bold">Model</p>
+        <p class="text-xs text-accent-cyan font-mono">${data.model || '--'}</p>
+      </div>
+      <span class="material-symbols-outlined text-primary">psychology</span>
+    </div>
+    <div class="flex items-center justify-between p-4 bg-bg-dark border border-border-d rounded-lg">
+      <div>
+        <p class="text-sm font-bold">Status</p>
+        <p class="text-xs ${data.running ? 'text-success' : 'text-slate-500'}">${data.running ? 'Agent Running' : 'Agent Stopped'}</p>
+      </div>
+      <span class="material-symbols-outlined ${data.running ? 'text-success' : 'text-slate-500'}">power_settings_new</span>
+    </div>
+    <div class="flex items-center justify-between p-4 bg-bg-dark border border-border-d rounded-lg">
+      <div>
+        <p class="text-sm font-bold">Tools Loaded</p>
+        <p class="text-xs text-slate-400">${data.tools?.count || 0} tools active</p>
+      </div>
+      <span class="material-symbols-outlined text-primary">construction</span>
+    </div>
+    <div class="flex items-center justify-between p-4 bg-bg-dark border border-border-d rounded-lg">
+      <div>
+        <p class="text-sm font-bold">Workspace</p>
+        <p class="text-xs text-slate-400 font-mono truncate max-w-[180px]">${data.workspace || '--'}</p>
+      </div>
+      <span class="material-symbols-outlined text-primary">folder</span>
+    </div>
+  `;
+}
+
+// === Logs ===
+let logLineNum = 1;
+
+function appendLog(logData) {
+  if (state.logsPaused) return;
+
+  const terminal = document.getElementById('log-terminal');
+  if (!terminal) return;
+
+  // Remove placeholder
+  if (state.logs.length === 0) {
+    terminal.innerHTML = '';
+  }
+
+  const level = logData?.level || 'info';
+  if (!state.logFilters.has(level)) return;
+
+  const timestamp = logData?.timestamp || new Date().toISOString();
+  const time = timestamp.includes('T') ? timestamp.split('T')[1]?.substring(0, 12) : timestamp;
+  const message = logData?.message || JSON.stringify(logData);
+  const source = logData?.source || 'system';
+
+  const levelColors = {
+    info: 'text-primary', success: 'text-success', warn: 'text-warn', error: 'text-error'
+  };
+
+  const line = document.createElement('div');
+  line.className = 'flex gap-4 hover:bg-primary/5 transition-colors';
+  line.innerHTML = `
+    <span class="text-slate-700 select-none w-10 text-right shrink-0">${String(logLineNum++).padStart(3, '0')}</span>
+    <span class="text-slate-500 shrink-0">${time}</span>
+    <span class="${levelColors[level] || 'text-primary'} font-bold uppercase w-16 shrink-0">[${level.toUpperCase()}]</span>
+    <span class="text-slate-300">${escapeHtml(message)}</span>
+  `;
+  terminal.appendChild(line);
+
+  state.logs.push(logData);
+  if (state.logs.length > state.maxLogs) {
+    state.logs.shift();
+    terminal.removeChild(terminal.firstChild);
+  }
+
+  terminal.scrollTop = terminal.scrollHeight;
+  document.getElementById('log-count').textContent = `${state.logs.length} events`;
+}
+
+function clearLogs() {
+  state.logs = [];
+  logLineNum = 1;
+  const terminal = document.getElementById('log-terminal');
+  if (terminal) terminal.innerHTML = '<div class="text-slate-600">Logs cleared. Waiting for events...</div>';
+  document.getElementById('log-count').textContent = '0 events';
+}
+
+function toggleLogPause() {
+  state.logsPaused = !state.logsPaused;
+  const btn = document.getElementById('log-pause-btn');
+  if (btn) {
+    btn.textContent = state.logsPaused ? 'Resume' : 'Pause';
+    btn.className = state.logsPaused
+      ? 'px-4 py-2 bg-warn text-white rounded-lg text-sm font-bold hover:bg-warn/80 transition-all'
+      : 'px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/80 transition-all';
+  }
+}
+
+function toggleLogFilter(level) {
+  if (state.logFilters.has(level)) {
+    state.logFilters.delete(level);
+  } else {
+    state.logFilters.add(level);
+  }
+}
+
+// === Chat ===
+async function sendChat(e) {
+  e.preventDefault();
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+  input.value = '';
+
+  const container = document.getElementById('chat-messages');
+
+  // Add user message
+  container.innerHTML += `
+    <div class="flex items-start gap-3 justify-end">
+      <div class="bg-primary/20 border border-primary/30 rounded-lg p-4 max-w-2xl">
+        <p class="text-sm text-white">${escapeHtml(message)}</p>
+      </div>
+      <div class="size-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-slate-400 text-sm">person</span>
+      </div>
+    </div>
+  `;
+
+  // Add thinking indicator
+  const thinkingId = 'thinking-' + Date.now();
+  container.innerHTML += `
+    <div id="${thinkingId}" class="flex items-start gap-3">
+      <div class="size-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+        <span class="material-symbols-outlined text-primary text-sm animate-spin">progress_activity</span>
+      </div>
+      <div class="bg-white/5 rounded-lg p-4">
+        <p class="text-sm text-slate-400 animate-pulse">Thinking...</p>
+      </div>
+    </div>
+  `;
+  container.scrollTop = container.scrollHeight;
+
+  const result = await apiPost('/api/agent/chat', { message, session: 'web:dashboard' });
+
+  // Remove thinking indicator
+  const thinking = document.getElementById(thinkingId);
+  if (thinking) thinking.remove();
+
+  if (result?.response) {
+    container.innerHTML += `
+      <div class="flex items-start gap-3">
+        <div class="size-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-primary text-sm">smart_toy</span>
+        </div>
+        <div class="bg-white/5 rounded-lg p-4 max-w-2xl">
+          <p class="text-sm text-slate-300 whitespace-pre-wrap">${escapeHtml(result.response)}</p>
+        </div>
+      </div>
+    `;
+  } else {
+    container.innerHTML += `
+      <div class="flex items-start gap-3">
+        <div class="size-8 rounded-lg bg-error/20 flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-error text-sm">error</span>
+        </div>
+        <div class="bg-error/10 rounded-lg p-4 max-w-2xl">
+          <p class="text-sm text-error">${result?.error || 'Failed to get response from agent'}</p>
+        </div>
+      </div>
+    `;
+  }
+  container.scrollTop = container.scrollHeight;
+}
+
+// === Navigation ===
+function navigateTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  document.querySelectorAll('.nav-link').forEach(l => {
+    l.className = l.className.replace('bg-primary text-white font-medium', 'hover:bg-white/5 text-slate-400');
+  });
+
+  const pageEl = document.getElementById(`page-${page}`);
+  if (pageEl) pageEl.classList.remove('hidden');
+
+  const navLink = document.querySelector(`[data-page="${page}"]`);
+  if (navLink) {
+    navLink.className = navLink.className.replace('hover:bg-white/5 text-slate-400', 'bg-primary text-white font-medium');
+  }
+
+  // Load page-specific data
+  if (page === 'bots') loadBotsPage();
+  if (page === 'tasks') loadTasksPage();
+  if (page === 'agents') loadAgentsPage();
+  if (page === 'workflows') loadWorkflowsPage();
+  if (page === 'integrations') loadIntegrationsPage();
+}
+
+async function loadAgentsPage() {
+  const [agentStatus, sessions] = await Promise.all([
+    api('/api/agent/status'),
+    api('/api/sessions'),
+  ]);
+
+  if (agentStatus) {
+    renderAgentConfig(agentStatus);
+
+    // Render fleet from channel status
+    const channelData = await api('/api/channels');
+    if (channelData) renderAgentFleet(channelData);
+  }
+  if (sessions) renderSessions(sessions);
+}
+
+function renderAgentFleet(channels) {
+  const grid = document.getElementById('agent-fleet');
+  const count = document.getElementById('fleet-count');
+  if (!grid) return;
+
+  const names = Object.keys(channels);
+  if (count) count.textContent = `${names.length} Channels`;
+
+  if (names.length === 0) {
+    grid.innerHTML = `
+      <div class="border-2 border-dashed border-border-d rounded-xl p-5 flex flex-col items-center justify-center text-slate-400 col-span-2">
+        <span class="material-symbols-outlined text-4xl mb-2">info</span>
+        <span class="text-sm font-bold">No channels enabled</span>
+        <span class="text-xs text-slate-500 mt-1">Configure channels in config.json</span>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = names.map(name => {
+    const ch = channels[name];
+    const isRunning = ch?.running;
+    const icon = getChannelIcon(name);
+    const statusColor = isRunning ? 'text-success' : 'text-error';
+    const statusText = isRunning ? 'Online' : 'Offline';
+    const borderHover = isRunning ? 'hover:border-primary/50' : 'hover:border-error/50';
+    const opacity = isRunning ? '' : 'opacity-70';
+
+    return `
+      <div class="bg-surface border border-border-d rounded-xl p-5 ${borderHover} ${opacity} transition-all group">
+        <div class="flex justify-between items-start mb-4">
+          <div class="flex items-center gap-3">
+            <div class="h-12 w-12 rounded-lg ${isRunning ? 'bg-success/10 text-success' : 'bg-slate-500/10 text-slate-400'} flex items-center justify-center">
+              <span class="material-symbols-outlined text-[28px]">${icon}</span>
+            </div>
+            <div>
+              <h4 class="font-bold capitalize">${name}</h4>
+              <div class="flex items-center gap-1.5">
+                <span class="h-1.5 w-1.5 rounded-full ${isRunning ? 'bg-success' : 'bg-error'}"></span>
+                <span class="text-[10px] uppercase font-bold ${statusColor} tracking-wider">${statusText}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-0.5 bg-border-d rounded text-[10px] font-bold text-slate-300 uppercase">${isRunning ? 'Active' : 'Stopped'}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadWorkflowsPage() {
+  const [cronJobs, cronStatus] = await Promise.all([
+    api('/api/cron/jobs'),
+    api('/api/cron/status'),
+  ]);
+
+  if (cronJobs !== null) renderCronJobs(cronJobs || []);
+  if (cronStatus) renderCronStatus(cronStatus);
+}
+
+// === Bots Page ===
+async function loadBotsPage() {
+  const bots = await api('/api/bots');
+  if (bots) renderBots(bots);
+}
+
+function renderBots(bots) {
+  const list = Array.isArray(bots) ? bots : [];
+  const running = list.filter(b => b.status === 'running').length;
+  const stopped = list.length - running;
+  const types = new Set(list.map(b => b.type)).size;
+
+  setText('bot-stat-total', list.length);
+  setText('bot-stat-running', running);
+  setText('bot-stat-stopped', stopped);
+  setText('bot-stat-types', types);
+
+  const grid = document.getElementById('bots-grid');
+  if (!grid) return;
+
+  if (list.length === 0) {
+    grid.innerHTML = `
+      <div class="col-span-3 border-2 border-dashed border-border-d rounded-xl p-8 flex flex-col items-center justify-center text-slate-400">
+        <span class="material-symbols-outlined text-5xl mb-3 text-primary/50">smart_toy</span>
+        <span class="text-lg font-bold mb-1">No bots configured</span>
+        <span class="text-sm text-slate-500">Click "Add Bot" to set up your first channel bot</span>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = list.map(bot => {
+    const isRunning = bot.status === 'running';
+    const icon = getChannelIcon(bot.type);
+    const statusColor = isRunning ? 'text-success' : 'text-slate-500';
+    const statusText = isRunning ? 'RUNNING' : 'STOPPED';
+    const dotColor = isRunning ? 'bg-success' : 'bg-slate-600';
+    const borderColor = isRunning ? 'border-success/20' : 'border-border-d';
+
+    return `
+      <div class="bg-surface border ${borderColor} rounded-xl p-5 hover:border-primary/40 transition-all group">
+        <div class="flex justify-between items-start mb-4">
+          <div class="flex items-center gap-3">
+            <div class="h-12 w-12 rounded-lg ${isRunning ? 'bg-success/10 text-success' : 'bg-slate-500/10 text-slate-400'} flex items-center justify-center">
+              <span class="material-symbols-outlined text-[28px]">${icon}</span>
+            </div>
+            <div>
+              <h4 class="font-bold capitalize">${bot.type}</h4>
+              <div class="flex items-center gap-1.5">
+                <span class="h-1.5 w-1.5 rounded-full ${dotColor} ${isRunning ? 'animate-pulse' : ''}"></span>
+                <span class="text-[10px] uppercase font-bold ${statusColor} tracking-wider">${statusText}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        ${bot.config ? `<div class="space-y-1 text-xs text-slate-500 mb-4">
+          ${bot.config.allow_from ? `<div>Allowed: <span class="text-slate-300">${bot.config.allow_from}</span></div>` : ''}
+        </div>` : ''}
+        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          ${isRunning
+            ? `<button onclick="stopBot('${bot.id}')" class="px-3 py-1.5 bg-error/10 border border-error/20 rounded-lg text-xs font-bold text-error hover:bg-error/20">Stop</button>`
+            : `<button onclick="startBot('${bot.id}')" class="px-3 py-1.5 bg-success/10 border border-success/20 rounded-lg text-xs font-bold text-success hover:bg-success/20">Start</button>`
+          }
+          <button onclick="deleteBot('${bot.id}')" class="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-slate-400 hover:bg-white/10">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function startBot(id) {
+  await apiPost(`/api/bots/${id}/start`, {});
+  loadBotsPage();
+}
+
+async function stopBot(id) {
+  await apiPost(`/api/bots/${id}/stop`, {});
+  loadBotsPage();
+}
+
+async function deleteBot(id) {
+  if (!confirm('Delete this bot?')) return;
+  await apiDelete(`/api/bots/${id}`);
+  loadBotsPage();
+}
+
+async function createBot() {
+  const type = document.getElementById('new-bot-type').value;
+  const token = document.getElementById('new-bot-token').value;
+  const allowFrom = document.getElementById('new-bot-allow').value;
+  const autoStart = document.getElementById('new-bot-autostart').checked;
+
+  if (!type) { alert('Please select a bot type'); return; }
+  if (!token) { alert('Please enter a token'); return; }
+
+  const result = await apiPost('/api/bots', { type, token, allow_from: allowFrom, auto_start: autoStart });
+  if (result && !result.error) {
+    hideAddBotModal();
+    loadBotsPage();
+  } else {
+    alert(result?.error || 'Failed to create bot');
+  }
+}
+
+// === Tasks Page ===
+let tasksDebounce = null;
+
+async function loadTasksPage() {
+  if (tasksDebounce) clearTimeout(tasksDebounce);
+  tasksDebounce = setTimeout(async () => {
+    const status = document.getElementById('task-filter-status')?.value || '';
+    const category = document.getElementById('task-filter-category')?.value || '';
+    const search = document.getElementById('task-filter-search')?.value || '';
+
+    let url = '/api/tasks?';
+    if (status) url += `state=${status}&`;
+    if (category) url += `category=${category}&`;
+    if (search) url += `search=${search}&`;
+
+    const tasks = await api(url);
+    if (tasks) renderTasks(tasks);
+  }, 200);
+}
+
+function renderTasks(data) {
+  const tasks = Array.isArray(data) ? data : (data?.tasks || []);
+
+  // Update stats
+  const total = tasks.length;
+  const todo = tasks.filter(t => (t.state||t.status) === 'inbox' || (t.state||t.status) === 'planned').length;
+  const progress = tasks.filter(t => (t.state||t.status) === 'running').length;
+  const done = tasks.filter(t => (t.state||t.status) === 'done').length;
+  const blocked = tasks.filter(t => (t.state||t.status) === 'blocked').length;
+
+  setText('task-stat-total', total);
+  setText('task-stat-todo', todo);
+  setText('task-stat-progress', progress);
+  setText('task-stat-done', done);
+  setText('task-stat-blocked', blocked);
+
+  const body = document.getElementById('tasks-body');
+  if (!body) return;
+
+  if (tasks.length === 0) {
+    body.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">No tasks found. Create one or let bots generate them.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = tasks.map(task => {
+    const st = task.state || task.status || 'unknown';
+    const statusColors = { inbox: 'text-accent-cyan bg-accent-cyan/10', planned: 'text-accent-cyan bg-accent-cyan/10', running: 'text-primary bg-primary/10', review: 'text-warning bg-warning/10', done: 'text-success bg-success/10', blocked: 'text-error bg-error/10' };
+    const priorityIcons = { 1: '↓', 2: '→', 3: '↑', 4: '⬆', 5: '🔥' };
+    const sc = statusColors[st] || 'text-slate-400 bg-white/5';
+    const updated = task.updated_at ? formatTimeAgo(task.updated_at) : '--';
+
+    return `
+      <tr class="hover:bg-white/5 transition-colors">
+        <td class="px-4 py-3">
+          <div class="font-medium text-white text-sm">${escapeHtml(task.title || 'Untitled')}</div>
+          ${task.description ? `<div class="text-xs text-slate-500 truncate max-w-xs">${escapeHtml(task.description.substring(0, 80))}</div>` : ''}
+        </td>
+        <td class="px-4 py-3">
+          <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase ${sc}">${st}</span>
+        </td>
+        <td class="px-4 py-3 text-xs text-slate-400 capitalize">${task.category || '--'}</td>
+        <td class="px-4 py-3 text-sm">${priorityIcons[task.priority] || '→'} ${task.priority || '--'}</td>
+        <td class="px-4 py-3 text-xs text-slate-500 font-mono">${task.source || '--'}</td>
+        <td class="px-4 py-3 text-xs text-slate-500">${updated}</td>
+        <td class="px-4 py-3 text-right">
+          <div class="flex items-center gap-1 justify-end">
+            ${st !== 'done' ? `<button onclick="updateTaskStatus('${task.id}', 'done')" class="p-1 hover:bg-success/10 rounded" title="Mark done"><span class="material-symbols-outlined text-success text-sm">check_circle</span></button>` : ''}
+            ${(st === 'inbox' || st === 'planned') ? `<button onclick="updateTaskStatus('${task.id}', 'running')" class="p-1 hover:bg-primary/10 rounded" title="Start"><span class="material-symbols-outlined text-primary text-sm">play_arrow</span></button>` : ''}
+            <button onclick="deleteTask('${task.id}')" class="p-1 hover:bg-error/10 rounded" title="Delete"><span class="material-symbols-outlined text-slate-500 text-sm">delete</span></button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function updateTaskStatus(id, status) {
+  await apiPut(`/api/tasks/${id}`, { status });
+  loadTasksPage();
+}
+
+async function deleteTask(id) {
+  await apiDelete(`/api/tasks/${id}`);
+  loadTasksPage();
+}
+
+function showAddTaskModal() { document.getElementById('add-task-modal').classList.remove('hidden'); }
+function hideAddTaskModal() { document.getElementById('add-task-modal').classList.add('hidden'); }
+
+async function createTask() {
+  const title = document.getElementById('new-task-title').value.trim();
+  const description = document.getElementById('new-task-desc').value.trim();
+  const category = document.getElementById('new-task-category').value;
+  const priority = parseInt(document.getElementById('new-task-priority').value) || 2;
+
+  if (!title) { alert('Title is required'); return; }
+
+  const result = await apiPost('/api/tasks', { title, description, category, priority: String(priority), source: 'dashboard' });
+  if (result && !result.error) {
+    hideAddTaskModal();
+    document.getElementById('new-task-title').value = '';
+    document.getElementById('new-task-desc').value = '';
+    loadTasksPage();
+  } else {
+    alert(result?.error || 'Failed to create task');
+  }
+}
+
+// === Helpers ===
+function setText(id, text, selector) {
+  let el;
+  if (selector) {
+    const parent = document.getElementById(id);
+    if (parent) el = parent.querySelector(selector);
+  } else {
+    el = document.getElementById(id);
+  }
+  if (el) el.textContent = text;
+}
+
+function updateHealthBadge(healthy) {
+  const badge = document.getElementById('health-badge');
+  if (!badge) return;
+  const span = badge.querySelector('span:last-child');
+  if (healthy) {
+    badge.className = 'flex items-center gap-2 px-3 py-1 rounded-full bg-accent-green/10 border border-accent-green/20';
+    if (span) span.textContent = 'Operational';
+    if (span) span.className = 'text-xs font-bold text-accent-green uppercase tracking-wider';
+  } else {
+    badge.className = 'flex items-center gap-2 px-3 py-1 rounded-full bg-error/10 border border-error/20';
+    if (span) span.textContent = 'Offline';
+    if (span) span.className = 'text-xs font-bold text-error uppercase tracking-wider';
+  }
+}
+
+function formatUptime(seconds) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function formatTimeAgo(dateStr) {
+  if (!dateStr) return '--';
+  const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function formatSchedule(schedule) {
+  if (!schedule) return '--';
+  if (schedule.expr) return schedule.expr;
+  if (schedule.everyMs) return `every ${Math.round(schedule.everyMs / 1000)}s`;
+  if (schedule.atMs) return new Date(schedule.atMs).toLocaleString();
+  return schedule.kind || '--';
+}
+
+function getChannelIcon(name) {
+  const icons = {
+    telegram: 'send', discord: 'forum', slack: 'tag', whatsapp: 'chat',
+    feishu: 'flight', dingtalk: 'notification_important', qq: 'chat_bubble',
+    maixcam: 'videocam', cli: 'terminal', web: 'language',
+  };
+  return icons[name] || 'cable';
+}
+
+function getToolIcon(name) {
+  const icons = {
+    read_file: 'description', write_file: 'edit_document', list_dir: 'folder_open',
+    edit_file: 'find_replace', exec: 'terminal', web_search: 'search',
+    web_fetch: 'language', message: 'chat', spawn: 'hub', cron: 'schedule',
+  };
+  return icons[name] || 'extension';
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// === Wizard State ===
+const wizard = { mode: null, template: null, step: 1, templates: [] };
+
+function wizSetStep(num) {
+  wizard.step = num;
+  ['wstep-1','wstep-2','wstep-3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (el) el.className = (i + 1 <= num) ? 'text-primary' : 'text-slate-600';
+  });
+  ['wiz-s1','wiz-s2t','wiz-s2m','wiz-s3t'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
+}
+
+function showAddBotModal() {
+  wizSetStep(1);
+  document.getElementById('wiz-s1').classList.remove('hidden');
+  document.getElementById('wizard-title').textContent = 'Add New Bot';
+  document.getElementById('wizard-subtitle').textContent = 'Choose how to configure your bot';
+  document.getElementById('add-bot-modal').classList.remove('hidden');
+}
+
+function hideAddBotModal() {
+  document.getElementById('add-bot-modal').classList.add('hidden');
+}
+
+function wizBack() {
+  if (wizard.step === 2) {
+    wizSetStep(1);
+    document.getElementById('wiz-s1').classList.remove('hidden');
+  } else if (wizard.step === 3) {
+    wizSetStep(2);
+    document.getElementById('wiz-s2t').classList.remove('hidden');
+  }
+}
+
+async function selectWizardMode(mode) {
+  wizard.mode = mode;
+  wizSetStep(2);
+  if (mode === 'template') {
+    document.getElementById('wiz-s2t').classList.remove('hidden');
+    document.getElementById('wizard-subtitle').textContent = 'Pick a personality template';
+    // Load templates if not already loaded
+    if (wizard.templates.length === 0) {
+      const data = await api('/api/bot-templates');
+      wizard.templates = data?.templates || [];
+    }
+    renderTemplateCards();
+  } else {
+    document.getElementById('wiz-s2m').classList.remove('hidden');
+    document.getElementById('wizard-subtitle').textContent = 'Enter bot credentials';
+  }
+}
+
+function renderTemplateCards() {
+  const container = document.getElementById('template-cards');
+  if (!container) return;
+  if (wizard.templates.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-2 p-6 text-center border-2 border-dashed border-border-d rounded-xl">
+        <span class="material-symbols-outlined text-3xl text-slate-600 mb-2 block">auto_awesome</span>
+        <p class="text-slate-500 text-sm">No templates found. Add YAML files to ./templates/bots/</p>
+      </div>`;
+    return;
+  }
+  container.innerHTML = wizard.templates.map(tpl => `
+    <button onclick="selectTemplate('${tpl.name}')" class="p-4 bg-bg-dark border border-border-d rounded-xl hover:border-primary transition-all text-left group">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="material-symbols-outlined text-primary text-xl">${getChannelIcon(tpl.channel)}</span>
+        <div>
+          <h5 class="font-bold text-white text-sm">${tpl.display_name || tpl.name}</h5>
+          <span class="text-[10px] text-slate-600 font-mono uppercase">${tpl.channel}</span>
+        </div>
+      </div>
+      <p class="text-xs text-slate-500 leading-relaxed">${tpl.description || ''}</p>
+      <div class="mt-3 flex flex-wrap gap-1">
+        ${(tpl.tools || []).slice(0,4).map(t => `<span class="px-1.5 py-0.5 bg-white/5 rounded text-[10px] text-slate-400 font-mono">${t}</span>`).join('')}
+        ${(tpl.tools||[]).length > 4 ? `<span class="text-[10px] text-slate-600">+${tpl.tools.length-4} more</span>` : ''}
+      </div>
+    </button>
+  `).join('');
+}
+
+function selectTemplate(name) {
+  wizard.template = wizard.templates.find(t => t.name === name);
+  if (!wizard.template) return;
+  wizSetStep(3);
+  document.getElementById('wiz-s3t').classList.remove('hidden');
+  document.getElementById('wizard-subtitle').textContent = 'Configure this bot\'s parameters';
+  // Fill template info
+  document.getElementById('tpl-name').textContent = wizard.template.display_name || wizard.template.name;
+  document.getElementById('tpl-desc').textContent = wizard.template.description || '';
+  document.getElementById('tpl-channel').textContent = `channel: ${wizard.template.channel} · v${wizard.template.version || '1.0'}`;
+  document.getElementById('tpl-icon').textContent = getChannelIconSymbol(wizard.template.channel);
+  // Build param form
+  const params = wizard.template.params || [];
+  const form = document.getElementById('tpl-params-form');
+  if (!form) return;
+  if (params.length === 0) {
+    form.innerHTML = '<p class="text-xs text-slate-500">No parameters required.</p>';
+    return;
+  }
+  form.innerHTML = params.map(p => `
+    <div>
+      <label class="block text-xs font-bold text-slate-400 uppercase mb-1">
+        ${p.name}${p.required ? ' <span class="text-error">*</span>' : ''}
+      </label>
+      ${p.description ? `<p class="text-[10px] text-slate-600 mb-1">${p.description}</p>` : ''}
+      <input 
+        id="tpl-param-${p.name}" 
+        type="${p.secret ? 'password' : 'text'}" 
+        class="w-full bg-bg-dark border border-border-d rounded-lg px-3 py-2 text-sm text-white" 
+        placeholder="${p.default || (p.required ? 'Required' : 'Optional')}"
+        value="${p.default && !p.secret ? p.default : ''}"
+      />
+    </div>
+  `).join('');
+}
+
+function getChannelIconSymbol(channel) {
+  const syms = { telegram: 'send', discord: 'forum', slack: 'tag', whatsapp: 'chat' };
+  return syms[channel] || 'smart_toy';
+}
+
+async function launchFromTemplate() {
+  const tpl = wizard.template;
+  if (!tpl) return;
+  const params = {};
+  (tpl.params || []).forEach(p => {
+    const el = document.getElementById(`tpl-param-${p.name}`);
+    if (el && el.value.trim()) params[p.name] = el.value.trim();
+  });
+  // Validate required
+  const missing = (tpl.params || []).filter(p => p.required && !params[p.name]);
+  if (missing.length > 0) {
+    alert(`Required: ${missing.map(p => p.name).join(', ')}`);
+    return;
+  }
+  const botId = `${tpl.channel}-${tpl.name}-${Date.now().toString(36)}`;
+  const body = { template: tpl.name, bot_id: botId, params, auto_start: true };
+  const result = await apiPost('/api/bots/from-template', body);
+  if (result && !result.error) {
+    hideAddBotModal();
+    appendLog({ level: 'success', source: 'wizard', message: `Bot created from template '${tpl.name}': ${botId}` });
+    loadBotsPage();
+  } else {
+    alert(result?.error || 'Failed to create bot from template');
+  }
+}
+
+// === Activity Feed ===
+const activityState = { events: [], maxEvents: 300, sources: new Set(), filter: '' };
+let actEventCount = 0;
+
+function pushActivity(evt) {
+  const feed = document.getElementById('activity-feed');
+  if (!feed) return;
+  // Remove placeholder
+  if (activityState.events.length === 0) feed.innerHTML = '';
+  const src = evt.source || evt.type?.split('.')[0] || 'system';
+  activityState.sources.add(src);
+  activityState.events.push({ ...evt, source: src });
+  if (activityState.events.length > activityState.maxEvents) {
+    activityState.events.shift();
+    feed.removeChild(feed.firstChild);
+  }
+  // Filter check
+  const filterSrc = activityState.filter;
+  if (filterSrc && src !== filterSrc) {
+    updateActivityStats();
+    return;
+  }
+  renderActivityEvent(feed, evt, src);
+  feed.scrollTop = feed.scrollHeight;
+  updateActivityStats();
+}
+
+function renderActivityEvent(feed, evt, src) {
+  const conf = evt.confidence;
+  const confColor = conf >= 0.7 ? 'text-success' : conf >= 0.4 ? 'text-warn' : 'text-slate-500';
+  const confText = conf !== undefined ? `${Math.round(conf * 100)}%` : '';
+  const typeColor = evt.type?.includes('error') || evt.type?.includes('fail') ? 'text-error' : 'text-accent-cyan';
+  const time = evt.timestamp ? new Date(evt.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+  const detail = evt.message || evt.data?.message || evt.data?.title || (evt.data ? JSON.stringify(evt.data).substring(0, 100) : '');
+  const div = document.createElement('div');
+  div.className = 'flex items-start gap-3 p-3 bg-bg-dark border border-border-d rounded-lg hover:border-primary/30 transition-all';
+  div.innerHTML = `
+    <div class="shrink-0 mt-0.5">
+      <span class="material-symbols-outlined ${typeColor} text-base">${getActIcon(evt.type)}</span>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 mb-0.5">
+        <span class="${typeColor} text-xs font-bold font-mono">${evt.type || 'event'}</span>
+        <span class="text-slate-700 text-xs font-mono">${src}</span>
+        ${confText ? `<span class="${confColor} text-[10px] font-mono ml-auto">${confText}</span>` : '<span class="ml-auto"></span>'}
+        <span class="text-[10px] text-slate-600 shrink-0">${time}</span>
+      </div>
+      <p class="text-xs text-slate-400 truncate">${escapeHtml(String(detail))}</p>
+    </div>`;
+  feed.appendChild(div);
+}
+
+function getActIcon(type) {
+  if (!type) return 'circle';
+  if (type.includes('bot')) return 'smart_toy';
+  if (type.includes('task')) return 'task_alt';
+  if (type.includes('message')) return 'chat';
+  if (type.includes('error') || type.includes('fail')) return 'error';
+  if (type.includes('log')) return 'terminal';
+  if (type.includes('workflow') || type.includes('event')) return 'bolt';
+  if (type.includes('cron')) return 'schedule';
+  return 'circle';
+}
+
+function filterActivity() {
+  activityState.filter = document.getElementById('activity-filter-source')?.value || '';
+  const feed = document.getElementById('activity-feed');
+  if (!feed) return;
+  feed.innerHTML = '';
+  const filtered = activityState.filter
+    ? activityState.events.filter(e => e.source === activityState.filter)
+    : activityState.events;
+  if (filtered.length === 0) {
+    feed.innerHTML = '<div class="text-center text-slate-600 py-8">No events for this filter</div>';
+    return;
+  }
+  filtered.forEach(e => renderActivityEvent(feed, e, e.source));
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function clearActivity() {
+  activityState.events = [];
+  activityState.sources = new Set();
+  actEventCount = 0;
+  const feed = document.getElementById('activity-feed');
+  if (feed) feed.innerHTML = '<div class="text-center text-slate-600 py-8">Feed cleared. Waiting for events...</div>';
+  updateActivityStats();
+}
+
+function updateActivityStats() {
+  const total = activityState.events.length;
+  const high = activityState.events.filter(e => (e.confidence || 0) >= 0.7).length;
+  setText('act-total', total);
+  setText('act-high', high);
+  setText('act-sources', activityState.sources.size);
+  setText('act-count-label', `${total} events`);
+}
+
+// === Integrations Page ===
+async function loadIntegrationsPage() {
+  const grid = document.getElementById('integrations-grid');
+  if (!grid) return;
+  // Try to load integration event stats from /api/events
+  const events = await api('/api/events?limit=100');
+  const integrations = buildIntegrationMap(events);
+  renderIntegrations(integrations);
+}
+
+function buildIntegrationMap(events) {
+  // Build per-source summary from event history
+  const map = {};
+  const list = Array.isArray(events) ? events : (events?.events || []);
+  list.forEach(e => {
+    const src = e.source || 'unknown';
+    if (!map[src]) map[src] = { name: src, count: 0, lastSeen: null, types: new Set() };
+    map[src].count++;
+    map[src].types.add(e.type || 'event');
+    const ts = e.timestamp || e.created_at;
+    if (ts && (!map[src].lastSeen || ts > map[src].lastSeen)) map[src].lastSeen = ts;
+  });
+  // Always show ide-monitor as a static card even if no events yet
+  if (!map['ide-monitor']) {
+    map['ide-monitor'] = { name: 'ide-monitor', count: 0, lastSeen: null, types: new Set(), static: true };
+  }
+  return Object.values(map);
+}
+
+function renderIntegrations(list) {
+  const grid = document.getElementById('integrations-grid');
+  if (!grid) return;
+
+  const integrationMeta = {
+    'ide-monitor': { icon: 'code', label: 'IDE Monitor', desc: 'Python pipeline monitoring VS Code activity — normalizer, burst detector, confidence scorer, correlator' },
+    'bot': { icon: 'smart_toy', label: 'Bot Events', desc: 'Bot lifecycle events — create, start, stop, error' },
+    'agent': { icon: 'psychology', label: 'Agent Core', desc: 'AI agent decisions, tool calls, and completions' },
+    'cron': { icon: 'schedule', label: 'Cron Scheduler', desc: 'Scheduled task events and job state' },
+    'ws': { icon: 'hub', label: 'WebSocket', desc: 'Real-time connection events' },
+    'tasks': { icon: 'task_alt', label: 'Task Engine', desc: 'Task creation, updates, and transitions' },
+  };
+
+  grid.innerHTML = list.map(src => {
+    const meta = integrationMeta[src.name] || { icon: 'electrical_services', label: src.name, desc: 'Custom integration source' };
+    const types = Array.from(src.types || []).slice(0, 5);
+    const active = src.count > 0 || !src.static;
+    const lastSeen = src.lastSeen ? formatTimeAgo(src.lastSeen) : 'never';
+
+    return `
+      <div class="bg-surface border ${active ? 'border-primary/20' : 'border-border-d'} rounded-xl p-5 hover:border-primary/40 transition-all">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="h-12 w-12 rounded-lg ${active ? 'bg-primary/10 text-primary' : 'bg-white/5 text-slate-500'} flex items-center justify-center">
+              <span class="material-symbols-outlined text-2xl">${meta.icon}</span>
+            </div>
+            <div>
+              <h4 class="font-bold text-white">${meta.label}</h4>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="size-1.5 rounded-full ${active ? 'bg-success animate-pulse' : 'bg-slate-600'}"></span>
+                <span class="text-[10px] uppercase font-bold ${active ? 'text-success' : 'text-slate-500'} tracking-wider">${active ? 'Active' : 'No data'}</span>
+              </div>
+            </div>
+          </div>
+          <span class="text-2xl font-bold ${active ? 'text-white' : 'text-slate-600'}">${src.count}</span>
+        </div>
+        <p class="text-xs text-slate-500 mb-3 leading-relaxed">${meta.desc}</p>
+        <div class="flex items-center justify-between text-[10px] text-slate-600">
+          <div class="flex flex-wrap gap-1">${types.map(t => `<span class="px-1.5 py-0.5 bg-white/5 rounded font-mono">${t}</span>`).join('')}</div>
+          <span>last: ${lastSeen}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// === Init ===
+document.addEventListener('DOMContentLoaded', () => {
+  // Load API token from localStorage
+  state.token = localStorage.getItem('picoclaw_token') || '';
+  // Handle hash navigation
+  function handleHash() {
+    const hash = window.location.hash.replace('#', '') || 'overview';
+    navigateTo(hash);
+  }
+  window.addEventListener('hashchange', handleHash);
+  handleHash();
+
+  // Load initial data
+  refreshData();
+
+  // Connect WebSocket
+  connectWS();
+
+  // Auto-refresh every 30s
+  setInterval(refreshData, 30000);
+});
+</script>
+
+</body>
+</html>

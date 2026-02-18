@@ -15,6 +15,12 @@ config.json
 sessions/
 build/
 
+# Local runtime artifacts
+.env
+picoclaw.log
+picoclaw.pid
+kanban.db
+
 # Coverage
 coverage.txt
 coverage.html

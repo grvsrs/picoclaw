@@ -10,12 +10,13 @@ import (
 )
 
 type Config struct {
-	Agents    AgentsConfig    `json:"agents"`
-	Channels  ChannelsConfig  `json:"channels"`
-	Providers ProvidersConfig `json:"providers"`
-	Gateway   GatewayConfig   `json:"gateway"`
-	Tools     ToolsConfig     `json:"tools"`
-	mu        sync.RWMutex
+	Agents       AgentsConfig       `json:"agents"`
+	Channels     ChannelsConfig     `json:"channels"`
+	Providers    ProvidersConfig    `json:"providers"`
+	Gateway      GatewayConfig      `json:"gateway"`
+	Tools        ToolsConfig        `json:"tools"`
+	Integrations IntegrationsConfig `json:"integrations"`
+	mu           sync.RWMutex
 }
 
 type AgentsConfig struct {
@@ -104,6 +105,7 @@ type ProvidersConfig struct {
 	Zhipu      ProviderConfig `json:"zhipu"`
 	VLLM       ProviderConfig `json:"vllm"`
 	Gemini     ProviderConfig `json:"gemini"`
+	Moonshot   ProviderConfig `json:"moonshot"`
 }
 
 type ProviderConfig struct {
@@ -113,8 +115,9 @@ type ProviderConfig struct {
 }
 
 type GatewayConfig struct {
-	Host string `json:"host" env:"PICOCLAW_GATEWAY_HOST"`
-	Port int    `json:"port" env:"PICOCLAW_GATEWAY_PORT"`
+	Host   string `json:"host" env:"PICOCLAW_GATEWAY_HOST"`
+	Port   int    `json:"port" env:"PICOCLAW_GATEWAY_PORT"`
+	APIKey string `json:"api_key,omitempty" env:"PICOCLAW_API_KEY"`
 }
 
 type WebSearchConfig struct {
@@ -126,8 +129,23 @@ type WebToolsConfig struct {
 	Search WebSearchConfig `json:"search"`
 }
 
+type QMDConfig struct {
+	Enabled     bool   `json:"enabled" env:"PICOCLAW_TOOLS_QMD_ENABLED"`
+	MCPEndpoint string `json:"mcp_endpoint" env:"PICOCLAW_TOOLS_QMD_MCP_ENDPOINT"`
+	// Mode controls which search backend agents use.
+	// "auto" (default): prefer HTTP MCP daemon when running, fall back to CLI BM25.
+	// "mcp":  always use the HTTP daemon (fails if daemon not running).
+	// "cli":  always use the qmd CLI (BM25 only, no ML models required).
+	Mode string `json:"mode" env:"PICOCLAW_TOOLS_QMD_MODE"`
+}
+
 type ToolsConfig struct {
 	Web WebToolsConfig `json:"web"`
+	QMD QMDConfig      `json:"qmd"`
+}
+
+type IntegrationsConfig struct {
+	KanbanServerURL string `json:"kanban_server_url" env:"PICOCLAW_INTEGRATIONS_KANBAN_SERVER_URL"`
 }
 
 func DefaultConfig() *Config {
@@ -198,6 +216,7 @@ func DefaultConfig() *Config {
 			Zhipu:      ProviderConfig{},
 			VLLM:       ProviderConfig{},
 			Gemini:     ProviderConfig{},
+			Moonshot:   ProviderConfig{},
 		},
 		Gateway: GatewayConfig{
 			Host: "0.0.0.0",
@@ -210,6 +229,14 @@ func DefaultConfig() *Config {
 					MaxResults: 5,
 				},
 			},
+			QMD: QMDConfig{
+				Enabled:     false,
+				MCPEndpoint: "http://localhost:8181/mcp",
+				Mode:        "auto",
+			},
+		},
+		Integrations: IntegrationsConfig{
+			KanbanServerURL: "http://127.0.0.1:5000",
 		},
 	}
 }
@@ -270,6 +297,9 @@ func (c *Config) GetAPIKey() string {
 	}
 	if c.Providers.OpenAI.APIKey != "" {
 		return c.Providers.OpenAI.APIKey
+	}
+	if c.Providers.Moonshot.APIKey != "" {
+		return c.Providers.Moonshot.APIKey
 	}
 	if c.Providers.Gemini.APIKey != "" {
 		return c.Providers.Gemini.APIKey

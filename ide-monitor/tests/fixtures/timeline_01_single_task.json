@@ -1,0 +1,68 @@
+[
+  {
+    "_comment": "Single Antigravity task: creation → plan → completion → git commit",
+    "events": [
+      {
+        "source": "antigravity",
+        "event_type": "antigravity.task.created",
+        "task_id": "abc123-guid",
+        "task_title": "Add user authentication",
+        "task_status": "planning",
+        "artifact_type": "task",
+        "artifact_path": "/home/user/.gemini/antigravity/brain/abc123-guid/task.md",
+        "timestamp_offset_secs": 0
+      },
+      {
+        "source": "antigravity",
+        "event_type": "antigravity.task.plan_ready",
+        "task_id": "abc123-guid",
+        "task_title": "Add user authentication",
+        "task_status": "planning",
+        "artifact_type": "implementation_plan",
+        "artifact_path": "/home/user/.gemini/antigravity/brain/abc123-guid/implementation_plan.md",
+        "timestamp_offset_secs": 15
+      },
+      {
+        "source": "filesystem",
+        "event_type": "filesystem.batch_modified",
+        "workspace_root": "/home/user/myproject",
+        "files_changed": [
+          {"path": "src/auth.py", "change_type": "created"},
+          {"path": "src/auth_test.py", "change_type": "created"},
+          {"path": "src/middleware.py", "change_type": "modified"}
+        ],
+        "timestamp_offset_secs": 45
+      },
+      {
+        "source": "antigravity",
+        "event_type": "antigravity.task.completed",
+        "task_id": "abc123-guid",
+        "task_title": "Add user authentication",
+        "task_status": "complete",
+        "artifact_type": "walkthrough",
+        "artifact_path": "/home/user/.gemini/antigravity/brain/abc123-guid/walkthrough.md",
+        "timestamp_offset_secs": 120
+      },
+      {
+        "source": "git",
+        "event_type": "git.commit",
+        "git_commit_sha": "a1b2c3d4e5f6",
+        "git_branch": "feature/auth",
+        "summary": "Add user authentication module",
+        "files_changed": [
+          {"path": "src/auth.py", "change_type": "created"},
+          {"path": "src/auth_test.py", "change_type": "created"},
+          {"path": "src/middleware.py", "change_type": "modified"}
+        ],
+        "timestamp_offset_secs": 150
+      }
+    ],
+    "expected": {
+      "commit_linked_to_task": true,
+      "linked_task_id": "abc123-guid",
+      "correlation_type": "file_overlap",
+      "activity_clustered": true,
+      "cluster_sources": ["antigravity", "filesystem", "git"]
+    }
+  }
+]

@@ -1,0 +1,140 @@
+# PicoClaw Configuration
+# ──────────────────────
+# Edit this file to add bots, users, and commands.
+# Restart the relevant bot process after changes.
+#
+# Security: This file contains NO secrets. Tokens are in environment variables.
+
+global:
+  task_base: /workspace/tasks
+  log_path: /var/log/picoclaw
+  audit_log: /var/log/picoclaw/audit.jsonl
+  result_timeout: 30         # seconds to wait for executor result
+  tailscale_only: false      # reject requests not from Tailscale IPs (future)
+
+# ──────────────────────────────────────────────────
+# Authorized users — Telegram numeric user IDs ONLY
+# Find yours: message @userinfobot on Telegram
+# ──────────────────────────────────────────────────
+users:
+  9411488118:
+    name: admin
+    roles: [admin, dev, ops]
+
+# ──────────────────────────────────────────────────
+# Bot definitions
+# ──────────────────────────────────────────────────
+
+bots:
+  dev_bot:
+    token_env: PICOCLAW_DEV_BOT_TOKEN   # export this env var, never hardcode
+    task_path: /home/g/workspace/tasks/dev
+    allowed_users: [9411488118]
+    commands:
+      run_tests:
+        description: "Run test suite for a project"
+        params:
+          project:
+            type: string
+            pattern: "^[a-zA-Z0-9_-]+$"
+            required: true
+          suite:
+            type: string
+            allowed: [unit, integration, all]
+            default: all
+      deploy:
+        description: "Deploy a project to an environment"
+        params:
+          project:
+            type: string
+            pattern: "^[a-zA-Z0-9_-]+$"
+            required: true
+          env:
+            type: string
+            allowed: [staging, production]
+            default: staging
+            require_confirmation_for: [production]
+      scaffold:
+        description: "Scaffold a new component or module"
+        params:
+          project:
+            type: string
+            pattern: "^[a-zA-Z0-9_-]+$"
+            required: true
+          component:
+            type: string
+            pattern: "^[a-zA-Z0-9_/-]+$"
+            required: true
+      git_status:
+        description: "Show git status for a project"
+        params:
+          project:
+            type: string
+            pattern: "^[a-zA-Z0-9_-]+$"
+            required: true
+
+  ops_bot:
+    token_env: PICOCLAW_OPS_BOT_TOKEN
+    task_path: /home/g/workspace/tasks/ops
+    allowed_users: [9411488118]
+    commands:
+      status:
+        description: "Show system status overview"
+        params: {}
+      logs:
+        description: "Stream logs for a service"
+        params:
+          service:
+            type: string
+            pattern: "^[a-zA-Z0-9_-]+$"
+            required: true
+          lines:
+            type: integer
+            min: 10
+            max: 500
+            default: 50
+      restart_service:
+        description: "Restart a systemd service"
+        require_confirmation: true
+        params:
+          service:
+            type: string
+            allowed: [nginx, postgresql, docker, redis]
+            required: true
+      disk_usage:
+        description: "Show disk usage"
+        params:
+          path:
+            type: string
+            pattern: "^/[a-zA-Z0-9/_-]*$"
+            default: /workspace
+      process_info:
+        description: "Show info about running processes"
+        params:
+          name:
+            type: string
+            pattern: "^[a-zA-Z0-9_-]+$"
+            required: true
+
+  monitor_bot:
+    token_env: PICOCLAW_MONITOR_BOT_TOKEN
+    task_path: /home/g/workspace/tasks/monitor
+    allowed_users: [9411488118]
+    commands:
+      health:
+        description: "Full health check"
+        params: {}
+      recent:
+        description: "Recent activity log"
+        params:
+          limit:
+            type: integer
+            min: 5
+            max: 50
+            default: 10
+
+  inbox_bot:
+    token_env: PICOCLAW_INBOX_BOT_TOKEN
+    task_path: /home/g/workspace/inbox
+    allowed_users: [9411488118, 7527847638]
+    commands: {}

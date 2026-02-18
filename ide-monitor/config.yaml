@@ -1,0 +1,26 @@
+# IDE Monitor — default configuration
+#
+# Override any of these values. The monitor auto-detects
+# paths if left empty.
+
+# Watch paths (leave empty for auto-detection)
+antigravity_brain_dir: ""
+antigravity_skills_dirs: []
+copilot_log_dir: ""
+workspace_root: "."
+
+# Picoclaw integration (set to connect, leave null for standalone)
+# picoclaw_url: "http://localhost:8080"
+picoclaw_url: null
+
+# Fallback storage
+jsonl_path: "~/.local/share/ide-monitor/events.jsonl"
+
+# Debounce (milliseconds)
+debounce_brain_ms: 800
+debounce_copilot_ms: 200
+debounce_skill_ms: 1000
+
+# Burst detection
+burst_window_secs: 5
+burst_threshold: 3

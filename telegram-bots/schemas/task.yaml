@@ -1,0 +1,122 @@
+# PicoClaw Task File Schema
+# =========================
+#
+# Each task is a YAML file placed in /workspace/tasks/{bot_type}/
+# Filename: task-{timestamp_ms}-{random_hex}.yaml
+#
+# The bot writes the initial task file; the executor reads and updates it.
+# This file documents the contract between the two components.
+
+# ──────────────────────────────
+# Initial state (written by bot)
+# ──────────────────────────────
+#
+# id: "task-1708000000000-a1b2c3d4"     # Unique, sortable task ID
+# bot: "dev_bot"                         # Which bot submitted this
+# command: "run_tests"                   # Command name (must be in COMMAND_TABLE)
+# user_id: 123456789                     # Telegram numeric user ID
+# username: "admin"                      # Telegram username or display name
+# params:                                # Command parameters (validated by bot)
+#   suite: "unit"
+# project: "myproject"                   # Optional: project name for dev commands
+# service: null                          # Optional: service name for ops commands
+# status: "pending"                      # Initial status
+# created_at: "2024-01-15T10:30:00Z"    # UTC ISO-8601 timestamp
+
+# ──────────────────────────────
+# After executor picks it up
+# ──────────────────────────────
+#
+# status: "running"
+# started_at: "2024-01-15T10:30:01Z"
+
+# ──────────────────────────────
+# After command completes
+# ──────────────────────────────
+#
+# status: "complete"                     # or "failed", "rejected", "timeout"
+# exit_code: 0                           # Process exit code (0 = success)
+# stdout: "..."                          # Truncated to MAX_OUTPUT chars (4096)
+# stderr: ""                             # Truncated to MAX_OUTPUT chars
+# summary: "Tests passed (suite=unit)"   # Human-readable one-liner
+# duration_s: 12.34                      # Execution time in seconds
+# completed_at: "2024-01-15T10:30:13Z"  # UTC ISO-8601 timestamp
+
+# ──────────────────────────────
+# Status State Machine
+# ──────────────────────────────
+#
+#   pending ──────────► running ──────────► complete
+#     │                    │
+#     │                    ├──────────────► failed
+#     │                    │
+#     │                    └──────────────► timeout
+#     │
+#     └──────────────► rejected              (unknown command / guardrail)
+#
+#   pending ──────────► awaiting_confirmation
+#                           │
+#                           ├──► pending     (after /confirm → re-enters flow)
+#                           │
+#                           └──► cancelled   (after /cancel)
+#
+# Terminal states: complete, failed, timeout, rejected, cancelled
+# Only "pending" tasks are picked up by the executor.
+
+# ──────────────────────────────
+# Example: complete lifecycle
+# ──────────────────────────────
+
+example_initial:
+  id: "task-1708000000000-a1b2c3d4"
+  bot: "dev_bot"
+  command: "run_tests"
+  user_id: 123456789
+  username: "admin"
+  params:
+    suite: "unit"
+  project: "glass-walls"
+  status: "pending"
+  created_at: "2024-01-15T10:30:00Z"
+
+example_complete:
+  id: "task-1708000000000-a1b2c3d4"
+  bot: "dev_bot"
+  command: "run_tests"
+  user_id: 123456789
+  username: "admin"
+  params:
+    suite: "unit"
+  project: "glass-walls"
+  status: "complete"
+  created_at: "2024-01-15T10:30:00Z"
+  started_at: "2024-01-15T10:30:01Z"
+  completed_at: "2024-01-15T10:30:13Z"
+  exit_code: 0
+  stdout: |
+    ========================= test session starts =========================
+    collected 42 items
+    tests/test_auth.py::test_login PASSED
+    tests/test_auth.py::test_logout PASSED
+    ...
+    ========================= 42 passed in 11.2s ==========================
+  stderr: ""
+  summary: "Tests passed (suite=unit)"
+  duration_s: 12.34
+
+# ──────────────────────────────
+# Audit Log Entry (audit.jsonl)
+# ──────────────────────────────
+#
+# Each line is a JSON object:
+# {
+#   "ts": "2024-01-15T10:30:00Z",
+#   "user_id": 123456789,
+#   "username": "admin",
+#   "bot": "dev_bot",
+#   "command": "run_tests",
+#   "task_id": "task-1708000000000-a1b2c3d4",
+#   "status": "submitted",
+#   "params": {"suite": "unit"},
+#   "project": "glass-walls"
+# }

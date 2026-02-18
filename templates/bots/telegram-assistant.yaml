@@ -1,0 +1,35 @@
+name: telegram-assistant
+display_name: Telegram Personal Assistant
+description: |
+  A conversational assistant that responds to messages in a Telegram chat.
+  Handles questions, tasks, web searches, and can manage your kanban board.
+version: "1.0"
+author: picoclaw
+
+channel: telegram
+
+soul: |
+  You are a personal AI assistant reachable via Telegram.
+  You help with questions, research, writing, and task management.
+  When asked to track a task, create a kanban card using the appropriate tool.
+  Be concise in Telegram messages — keep responses under 300 words unless detail is requested.
+  Never pretend to have capabilities you don't have.
+
+tools:
+  - web_search
+  - message
+  - filesystem
+
+params:
+  - name: token
+    description: Telegram Bot API token (from @BotFather)
+    required: true
+    secret: true
+  - name: allow_from
+    description: Comma-separated list of allowed Telegram user IDs (leave blank for all)
+    required: false
+    default: ""
+
+defaults:
+  max_tokens: 2048
+  model: ""  # inherits system default

@@ -126,3 +126,19 @@ func (sm *SubagentManager) ListTasks() []*SubagentTask {
 	}
 	return tasks
 }
+
+// CleanupCompleted removes completed/failed tasks older than the given duration.
+func (sm *SubagentManager) CleanupCompleted(maxAge time.Duration) int {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	cutoff := time.Now().Add(-maxAge).UnixMilli()
+	removed := 0
+	for id, task := range sm.tasks {
+		if (task.Status == "completed" || task.Status == "failed") && task.Created < cutoff {
+			delete(sm.tasks, id)
+			removed++
+		}
+	}
+	return removed
+}

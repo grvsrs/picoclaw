@@ -1,0 +1,61 @@
+[
+  {
+    "_comment": "Context switch: Task A in progress, then Task B starts. Commit should link to most recent task.",
+    "events": [
+      {
+        "source": "antigravity",
+        "event_type": "antigravity.task.created",
+        "task_id": "task-a-guid",
+        "task_title": "Refactor database layer",
+        "task_status": "planning",
+        "timestamp_offset_secs": 0
+      },
+      {
+        "source": "copilot",
+        "event_type": "copilot.completion",
+        "tokens_prompt": 150,
+        "tokens_completion": 80,
+        "artifact_path": "/logs/copilot-001.json",
+        "timestamp_offset_secs": 30
+      },
+      {
+        "source": "copilot",
+        "event_type": "copilot.completion",
+        "tokens_prompt": 200,
+        "tokens_completion": 120,
+        "artifact_path": "/logs/copilot-001.json",
+        "timestamp_offset_secs": 35
+      },
+      {
+        "source": "antigravity",
+        "event_type": "antigravity.task.created",
+        "task_id": "task-b-guid",
+        "task_title": "Fix login bug",
+        "task_status": "planning",
+        "timestamp_offset_secs": 60
+      },
+      {
+        "source": "antigravity",
+        "event_type": "antigravity.task.completed",
+        "task_id": "task-b-guid",
+        "task_title": "Fix login bug",
+        "task_status": "complete",
+        "timestamp_offset_secs": 180
+      },
+      {
+        "source": "git",
+        "event_type": "git.commit",
+        "git_commit_sha": "deadbeef1234",
+        "git_branch": "fix/login",
+        "summary": "Fix login session handling",
+        "timestamp_offset_secs": 200
+      }
+    ],
+    "expected": {
+      "commit_linked_to_task": true,
+      "linked_task_id": "task-b-guid",
+      "correlation_type": "time_proximity",
+      "copilot_events_have_low_confidence": true
+    }
+  }
+]

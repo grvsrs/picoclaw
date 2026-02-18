@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# =============================================================================
+# qmd-run — picoclaw wrapper for the QMD CLI
+#
+# Invokes QMD using the absolute Node 22 binary found via nvm, bypassing the
+# nvm shell function which isn't available in non-interactive contexts such as
+# picoclaw's exec tool.
+#
+# Installation (run once):
+#   sudo cp ~/picoclaw/scripts/qmd-run /usr/local/bin/qmd-run
+#   sudo chmod +x /usr/local/bin/qmd-run
+#
+# Or without sudo (put it somewhere in your PATH):
+#   cp ~/picoclaw/scripts/qmd-run ~/.local/bin/qmd-run
+#   chmod +x ~/.local/bin/qmd-run
+# =============================================================================
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Locate Node >= 22 without needing the nvm shell function
+# ---------------------------------------------------------------------------
+find_node22() {
+  # 1. Check if current PATH node is already >= 22
+  if command -v node &>/dev/null; then
+    local ver
+    ver=$(node --version 2>/dev/null | sed 's/^v//' | cut -d. -f1 || echo 0)
+    if [[ "$ver" -ge 22 ]]; then
+      command -v node
+      return 0
+    fi
+  fi
+
+  # 2. Probe nvm directories — the shell function isn't available here,
+  #    so we scan the version directories directly.
+  local home="${HOME:-$(eval echo ~)}"
+  local nvm_dirs=(
+    "$home/.config/nvm"   # nvm when XDG_CONFIG_HOME is respected (this system)
+    "$home/.nvm"          # nvm default
+    "$home/.local/nvm"
+  )
+
+  for nvm_root in "${nvm_dirs[@]}"; do
+    [[ -d "$nvm_root/versions/node" ]] || continue
+    local best=""
+    while IFS= read -r candidate; do
+      local major
+      major=$(basename "$candidate" | sed 's/^v//' | cut -d. -f1)
+      if [[ "$major" -ge 22 ]]; then
+        best="$candidate/bin/node"
+      fi
+    done < <(find "$nvm_root/versions/node" -maxdepth 1 -name 'v*' -type d | sort -V)
+    if [[ -n "$best" && -x "$best" ]]; then
+      echo "$best"
+      return 0
+    fi
+  done
+
+  # 3. Other version managers + system paths
+  local candidates=(
+    "$home/.local/share/mise/installs/node/latest/bin/node"
+    "$home/.local/share/mise/shims/node"
+    "$home/.asdf/shims/node"
+    "/opt/homebrew/bin/node"
+    "/usr/local/bin/node"
+  )
+  for c in "${candidates[@]}"; do
+    if [[ -x "$c" ]]; then
+      local ver
+      ver=$("$c" --version 2>/dev/null | sed 's/^v//' | cut -d. -f1 || echo 0)
+      if [[ "$ver" -ge 22 ]]; then
+        echo "$c"
+        return 0
+      fi
+    fi
+  done
+
+  return 1
+}
+
+NODE=$(find_node22) || {
+  echo "Error: Node.js >= 22 not found." >&2
+  echo "Install: nvm install 22   (or see https://nodejs.org)" >&2
+  exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Locate dist/qmd.js
+# ---------------------------------------------------------------------------
+home="${HOME:-$(eval echo ~)}"
+QMD_DIST="$home/picoclaw/bot_memory/dist/qmd.js"
+
+if [[ ! -f "$QMD_DIST" ]]; then
+  echo "Error: QMD dist not built at $QMD_DIST" >&2
+  echo "Build it: cd ~/picoclaw/bot_memory && bash -i -c 'nvm use 22 && npm install && npx tsc -p tsconfig.build.json'" >&2
+  exit 2
+fi
+
+exec "$NODE" "$QMD_DIST" "$@"

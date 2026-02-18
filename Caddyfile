@@ -1,0 +1,50 @@
+# PicoClaw — Caddy reverse proxy with automatic HTTPS
+# Usage:
+#   1. Replace yourdomain.com with your actual domain
+#   2. Ensure your DNS A record points to this server's public IP
+#   3. Run: caddy run --config Caddyfile
+#      Or as a service: sudo systemctl start caddy
+#
+# Caddy automatically provisions and renews a Let's Encrypt TLS certificate.
+# No other config is needed for HTTPS.
+
+yourdomain.com {
+    # Reverse proxy all traffic to the local PicoClaw gateway
+    reverse_proxy 127.0.0.1:18790
+
+    # WebSocket support — Caddy handles upgrade headers automatically
+
+    # Security headers
+    header {
+        # Prevent clickjacking
+        X-Frame-Options DENY
+        # Prevent MIME sniffing
+        X-Content-Type-Options nosniff
+        # Enable HSTS (1 year)
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        # Referrer policy
+        Referrer-Policy strict-origin-when-cross-origin
+        # Remove server fingerprint
+        -Server
+    }
+
+    # Access log (optional — comment out if you don't need it)
+    log {
+        output file /var/log/caddy/picoclaw.log
+        format json
+    }
+}
+
+# Optional: redirect www → apex
+www.yourdomain.com {
+    redir https://yourdomain.com{uri} permanent
+}
+
+# -------------------------------------------------------------------------
+# Local-only variant (no domain, self-signed TLS, for LAN access):
+# Uncomment below and comment out the block above if you don't have a domain.
+# -------------------------------------------------------------------------
+# :443 {
+#     tls internal
+#     reverse_proxy 127.0.0.1:18790
+# }

@@ -138,6 +138,66 @@ func (sm *SessionManager) TruncateHistory(key string, keepLast int) {
 	session.Updated = time.Now()
 }
 
+// ListSessions returns summary info for all sessions (without full message history).
+func (sm *SessionManager) ListSessions() []Session {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	sessions := make([]Session, 0, len(sm.sessions))
+	for _, s := range sm.sessions {
+		sessions = append(sessions, Session{
+			Key:      s.Key,
+			Messages: nil, // omit full history for listing
+			Summary:  s.Summary,
+			Created:  s.Created,
+			Updated:  s.Updated,
+		})
+	}
+	return sessions
+}
+
+// GetSession returns the full session data for a given key.
+func (sm *SessionManager) GetSession(key string) (*Session, bool) {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	session, ok := sm.sessions[key]
+	if !ok {
+		return nil, false
+	}
+	return session, true
+}
+
+// DeleteSession removes a session by key.
+func (sm *SessionManager) DeleteSession(key string) bool {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	_, ok := sm.sessions[key]
+	if !ok {
+		return false
+	}
+	delete(sm.sessions, key)
+
+	if sm.storage != "" {
+		sessionPath := filepath.Join(sm.storage, key+".json")
+		os.Remove(sessionPath)
+	}
+	return true
+}
+
+// MessageCount returns the number of messages in a session.
+func (sm *SessionManager) MessageCount(key string) int {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	session, ok := sm.sessions[key]
+	if !ok {
+		return 0
+	}
+	return len(session.Messages)
+}
+
 func (sm *SessionManager) Save(session *Session) error {
 	if sm.storage == "" {
 		return nil

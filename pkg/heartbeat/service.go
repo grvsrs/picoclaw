@@ -15,6 +15,7 @@ type HeartbeatService struct {
 	enabled     bool
 	mu          sync.RWMutex
 	stopChan    chan struct{}
+	closeOnce   sync.Once
 }
 
 func NewHeartbeatService(workspace string, onHeartbeat func(string) (string, error), intervalS int, enabled bool) *HeartbeatService {
@@ -52,7 +53,7 @@ func (hs *HeartbeatService) Stop() {
 		return
 	}
 
-	close(hs.stopChan)
+	hs.closeOnce.Do(func() { close(hs.stopChan) })
 }
 
 func (hs *HeartbeatService) running() bool {

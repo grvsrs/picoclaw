@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PicoClaw // Task Board</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg:        #0a0b0d;
+    --bg2:       #0f1114;
+    --bg3:       #141619;
+    --border:    #1e2127;
+    --border2:   #2a2f38;
+    --text:      #c8cdd6;
+    --text-dim:  #4a5260;
+    --text-mid:  #7a8494;
+    --accent:    #00d4aa;
+    --accent2:   #0099cc;
+    --warn:      #e8a020;
+    --danger:    #cc3344;
+    --done:      #2a8a4a;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.15),
+      rgba(0, 0, 0, 0.15) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .logo span { color: var(--text-mid); font-weight: 300; }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .mode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border: 1px solid var(--border2);
+    border-radius: 2px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .mode-badge.local  { border-color: var(--accent);  color: var(--accent); }
+  .mode-badge.remote { border-color: var(--accent2); color: var(--accent2); }
+
+  .mode-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  .refresh-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--text-mid);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 10px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+
+  .stat {
+    flex: 1;
+    padding: 10px 16px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .stat:last-child { border-right: none; }
+
+  .stat-num {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.4;
+  }
+
+  .stat-num.accent  { color: var(--accent); }
+  .stat-num.warn    { color: var(--warn); }
+  .stat-num.danger  { color: var(--danger); }
+  .stat-num.done    { color: var(--done); }
+
+  /* ── BOARD ── */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0;
+    min-height: calc(100vh - 110px);
+    border-top: none;
+  }
+
+  /* ── COLUMN ── */
+  .column {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+
+  .column:last-child { border-right: none; }
+
+  .col-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg2);
+    position: sticky;
+    top: 61px;
+  }
+
+  .col-title {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-mid);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .col-title::before {
+    content: '';
+    display: block;
+    width: 3px;
+    height: 12px;
+    border-radius: 1px;
+    background: var(--col-color, var(--border2));
+  }
+
+  .col-count {
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 2px;
+  }
+
+  .col-body {
+    padding: 10px 10px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* column accent colors */
+  .col-inbox    { --col-color: #4a5260; }
+  .col-planned  { --col-color: #0099cc; }
+  .col-running  { --col-color: #00d4aa; }
+  .col-blocked  { --col-color: #e8a020; }
+  .col-review   { --col-color: #9966cc; }
+  .col-done     { --col-color: #2a8a4a; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 10px 12px;
+    cursor: default;
+    transition: border-color 0.15s, transform 0.1s;
+    position: relative;
+    overflow: hidden;
+    animation: cardIn 0.2s ease-out;
+  }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--card-accent, var(--border2));
+  }
+
+  .card:hover {
+    border-color: var(--border2);
+    transform: translateY(-1px);
+  }
+
+  .card-id {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title {
+    font-size: 12px;
+    font-family: var(--sans);
+    font-weight: 400;
+    color: var(--text);
+    line-height: 1.4;
+    margin-bottom: 8px;
+    word-break: break-word;
+  }
+
+  .card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+  }
+
+  .tag {
+    font-size: 9px;
+    padding: 2px 6px;
+    border: 1px solid var(--border2);
+    border-radius: 1px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    text-transform: lowercase;
+  }
+
+  .priority-high   { --card-accent: var(--danger); }
+  .priority-medium { --card-accent: var(--warn); }
+  .priority-low    { --card-accent: var(--accent2); }
+  .priority-normal { --card-accent: var(--border2); }
+
+  .priority-badge {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .priority-badge.high   { color: var(--danger); }
+  .priority-badge.medium { color: var(--warn); }
+  .priority-badge.low    { color: var(--accent2); }
+
+  .source-icon {
+    font-size: 10px;
+    opacity: 0.5;
+  }
+
+  .card-time {
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    font-family: var(--mono);
+  }
+
+  /* running card pulse */
+  .col-running .card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(0,212,170,0.02) 50%, transparent 100%);
+    animation: sweep 3s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes sweep {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    padding: 20px 0;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+  }
+
+  .empty::before {
+    content: '—';
+    display: block;
+    margin-bottom: 4px;
+    opacity: 0.3;
+  }
+
+  /* ── EVENT LOG ── */
+  .event-log {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 320px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    font-size: 10px;
+    z-index: 200;
+    transition: height 0.2s;
+  }
+
+  .event-log-header {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .event-log-title {
+    color: var(--text-mid);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 9px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .event-log-body {
+    max-height: 160px;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
+
+  .event-row {
+    padding: 4px 12px;
+    display: flex;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .event-time { color: var(--text-dim); min-width: 50px; }
+  .event-type { color: var(--accent); min-width: 80px; font-weight: 500; }
+  .event-msg  { color: var(--text-mid); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+
+  /* ── LOADING / ERROR ── */
+  .loading {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 40px;
+    color: var(--text-mid);
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg {
+    grid-column: 1 / -1;
+    padding: 20px;
+    background: rgba(204, 51, 68, 0.1);
+    border: 1px solid var(--danger);
+    border-radius: 2px;
+    color: var(--danger);
+    margin: 10px;
+  }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 20px; border-bottom: 1px solid var(--border); background: var(--bg2);
+    gap: 12px; flex-wrap: wrap;
+  }
+  .filter-group { display: flex; align-items: center; gap: 8px; }
+  .filter-label { font-size: 9px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+  .filter-select {
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text-mid);
+    font-family: var(--mono); font-size: 10px; padding: 3px 8px; border-radius: 2px; cursor: pointer;
+  }
+  .filter-select:focus { border-color: var(--accent); outline: none; }
+
+  .btn {
+    background: none; border: 1px solid var(--border2); color: var(--text-mid);
+    font-family: var(--mono); font-size: 10px; padding: 4px 12px; cursor: pointer;
+    letter-spacing: 0.05em; transition: all 0.15s; border-radius: 2px;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { border-color: var(--accent); color: var(--accent); }
+  .btn-primary:hover { background: rgba(0,212,170,0.1); }
+
+  /* ── CATEGORY / PROJECT TAGS ── */
+  .tag-category { border-color: var(--accent2); color: var(--accent2); }
+  .tag-project  { border-color: #9966cc; color: #9966cc; }
+  .priority-badge.critical { color: var(--danger); }
+
+  /* ── CREATE TASK MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 500; align-items: center; justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 4px;
+    padding: 20px; width: 420px; max-width: 90vw;
+  }
+  .modal h3 { font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; }
+  .form-group { margin-bottom: 12px; }
+  .form-label { display: block; font-size: 9px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
+  .form-input, .form-textarea {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--mono); font-size: 12px; padding: 6px 10px; border-radius: 2px;
+  }
+  .form-input:focus, .form-textarea:focus { border-color: var(--accent); outline: none; }
+  .form-textarea { min-height: 60px; resize: vertical; }
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">PICOCLAW <span>// TASK BOARD</span></div>
+  <div class="header-meta">
+    <div class="mode-badge" id="mode-badge">
+      <span class="mode-dot"></span>
+      <span id="mode-label">LOCAL</span>
+    </div>
+    <button class="btn btn-primary" onclick="openCreateModal()">+ NEW TASK</button>
+    <button class="btn" onclick="loadBoard()">↻ REFRESH</button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="filter-group">
+    <span class="filter-label">Category</span>
+    <select class="filter-select" id="filter-category" onchange="applyFilters()">
+      <option value="">All</option>
+      <option value="code">Code</option>
+      <option value="design">Design</option>
+      <option value="infra">Infra</option>
+      <option value="bug">Bug</option>
+      <option value="feature">Feature</option>
+      <option value="research">Research</option>
+      <option value="ops">Ops</option>
+      <option value="personal">Personal</option>
+      <option value="meeting">Meeting</option>
+      <option value="uncategorized">Uncategorized</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Project</span>
+    <select class="filter-select" id="filter-project" onchange="applyFilters()">
+      <option value="">All</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Source</span>
+    <select class="filter-select" id="filter-source" onchange="applyFilters()">
+      <option value="">All</option>
+      <option value="telegram">Telegram</option>
+      <option value="vscode">VSCode</option>
+      <option value="api">API</option>
+      <option value="cli">CLI</option>
+      <option value="llm">LLM</option>
+      <option value="manual">Manual</option>
+    </select>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat">
+    <div class="stat-num accent" id="stat-total">0</div>
+    <div class="stat-label">Total</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num accent" id="stat-running">0</div>
+    <div class="stat-label">Running</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num warn" id="stat-blocked">0</div>
+    <div class="stat-label">Blocked</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num" id="stat-review">0</div>
+    <div class="stat-label">Review</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num done" id="stat-done">0</div>
+    <div class="stat-label">Done</div>
+  </div>
+</div>
+
+<div class="board" id="board">
+  <div class="loading" style="grid-column:1/-1">
+    <div class="spinner"></div>
+    <span>Loading board...</span>
+  </div>
+</div>
+
+<!-- Create Task Modal -->
+<div class="modal-overlay" id="create-modal">
+  <div class="modal">
+    <h3>Create Task</h3>
+    <div class="form-group">
+      <label class="form-label">Title</label>
+      <input class="form-input" id="new-title" placeholder="What needs to be done?" autofocus>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="form-textarea" id="new-description" placeholder="Optional details..."></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select class="form-input" id="new-category">
+          <option value="uncategorized">Uncategorized</option>
+          <option value="code">Code</option>
+          <option value="design">Design</option>
+          <option value="infra">Infra</option>
+          <option value="bug">Bug</option>
+          <option value="feature">Feature</option>
+          <option value="research">Research</option>
+          <option value="ops">Ops</option>
+          <option value="personal">Personal</option>
+          <option value="meeting">Meeting</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select class="form-input" id="new-priority">
+          <option value="normal">Normal</option>
+          <option value="low">Low</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Project</label>
+        <input class="form-input" id="new-project" placeholder="e.g., picoclaw">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tags (comma-separated)</label>
+        <input class="form-input" id="new-tags" placeholder="e.g., backend, auth">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeCreateModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createTask()">Create</button>
+    </div>
+  </div>
+</div>
+
+<div class="event-log">
+  <div class="event-log-header" onclick="toggleLog()">
+    <div class="event-log-title">
+      📋 EVENTS
+    </div>
+    <span id="log-toggle">▲</span>
+  </div>
+  <div class="event-log-body" id="event-log-body">
+    <div class="event-row" style="padding: 10px;">
+      <span style="color: var(--text-dim); font-size: 9px;">Waiting for events...</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLUMNS = [
+  { id: 'inbox',   label: 'INBOX',   cls: 'col-inbox' },
+  { id: 'planned', label: 'PLANNED', cls: 'col-planned' },
+  { id: 'running', label: 'RUNNING', cls: 'col-running' },
+  { id: 'blocked', label: 'BLOCKED', cls: 'col-blocked' },
+  { id: 'review',  label: 'REVIEW',  cls: 'col-review' },
+  { id: 'done',    label: 'DONE',    cls: 'col-done' },
+];
+
+const SOURCE_ICONS = { telegram: '✈', vscode: '⬡', executor: '⚡', manual: '◇', api: '◈', cli: '▶', llm: '◉' };
+const CATEGORY_COLORS = {
+  code: '#00d4aa', design: '#9966cc', infra: '#e8a020', bug: '#cc3344',
+  feature: '#0099cc', research: '#6699ff', ops: '#ff9966', personal: '#88cc44',
+  meeting: '#cc66ff', uncategorized: '#4a5260'
+};
+
+let logOpen = true;
+let allCards = [];
+let filteredCards = [];
+
+/* INJECT_API_KEY */
+
+// ── DATA ────────────────────────────────────────────────────────────────────
+
+async function loadBoard() {
+  try {
+    const response = await fetch('/api/board');
+    const data = await response.json();
+    allCards = data.cards || [];
+    applyFilters();
+    renderStats(filteredCards);
+    renderEvents(data.events || []);
+    updateMode(data.mode || 'local');
+    updateProjectFilter(data.projects || {});
+  } catch (e) {
+    console.warn('Server not yet available; showing demo mode');
+    allCards = DEMO_CARDS;
+    applyFilters();
+    renderStats(filteredCards);
+    renderEvents(DEMO_EVENTS);
+  }
+}
+
+function applyFilters() {
+  const cat  = document.getElementById('filter-category').value;
+  const proj = document.getElementById('filter-project').value;
+  const src  = document.getElementById('filter-source').value;
+
+  filteredCards = allCards.filter(c => {
+    if (cat  && c.category !== cat) return false;
+    if (proj && c.project  !== proj) return false;
+    if (src  && c.source   !== src) return false;
+    return true;
+  });
+
+  renderBoard(filteredCards);
+  renderStats(filteredCards);
+}
+
+function updateProjectFilter(projects) {
+  const sel = document.getElementById('filter-project');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All</option>';
+  Object.keys(projects).sort().forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p;
+    opt.textContent = `${p} (${projects[p]})`;
+    sel.appendChild(opt);
+  });
+  sel.value = current;
+}
+
+// ── RENDER ──────────────────────────────────────────────────────────────────
+
+function renderBoard(cards) {
+  const board = document.getElementById('board');
+  const byState = {};
+  COLUMNS.forEach(c => byState[c.id] = []);
+  cards.forEach(card => {
+    if (byState[card.state]) byState[card.state].push(card);
+    else byState['inbox'].push(card);
+  });
+
+  board.innerHTML = COLUMNS.map(col => `
+    <div class="column ${col.cls}">
+      <div class="col-header">
+        <div class="col-title">${col.label}</div>
+        <div class="col-count">${byState[col.id].length}</div>
+      </div>
+      <div class="col-body">
+        ${byState[col.id].map(renderCard).join('')}
+        ${byState[col.id].length === 0 ? '<div class="empty">—</div>' : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderCard(card) {
+  const priority = card.priority || 'normal';
+  const source   = card.source   || 'manual';
+  const category = card.category || 'uncategorized';
+  const icon     = SOURCE_ICONS[source] || '○';
+  const tags     = (card.tags || []).slice(0, 3);
+  const catColor = CATEGORY_COLORS[category] || '#4a5260';
+  const time     = card.created_at
+    ? new Date(card.created_at).toLocaleString('en-US', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '';
+
+  const catBadge     = category !== 'uncategorized' ? `<span class="tag tag-category" style="border-color:${catColor};color:${catColor}">${category}</span>` : '';
+  const projectBadge = card.project ? `<span class="tag tag-project">${escHtml(card.project)}</span>` : '';
+
+  return `
+    <div class="card priority-${priority}">
+      <div class="card-id">
+        <span>${escHtml(card.card_id)}</span>
+        <span class="source-icon" title="${source}">${icon}</span>
+      </div>
+      <div class="card-title">${escHtml(card.title)}</div>
+      <div class="card-meta">
+        ${priority !== 'normal' ? `<span class="priority-badge ${priority}">${priority}</span>` : ''}
+        ${catBadge}
+        ${projectBadge}
+        ${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}
+      </div>
+      <div class="card-time">${time}</div>
+    </div>
+  `;
+}
+
+function renderStats(cards) {
+  document.getElementById('stat-total').textContent   = cards.length;
+  document.getElementById('stat-running').textContent = cards.filter(c => c.state === 'running').length;
+  document.getElementById('stat-blocked').textContent = cards.filter(c => c.state === 'blocked').length;
+  document.getElementById('stat-done').textContent    = cards.filter(c => c.state === 'done').length;
+  document.getElementById('stat-review').textContent  = cards.filter(c => c.state === 'review').length;
+}
+
+function updateMode(mode) {
+  const badge = document.getElementById('mode-badge');
+  const label = document.getElementById('mode-label');
+  badge.className = `mode-badge ${mode}`;
+  label.textContent = mode.toUpperCase();
+}
+
+function renderEvents(events) {
+  const body = document.getElementById('event-log-body');
+  if (!events || !events.length) return;
+  body.innerHTML = events.slice(0, 20).map(e => {
+    const time = e.timestamp
+      ? new Date(e.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      : '—';
+    const msg = escHtml(e.message || '').substring(0, 40);
+    return `<div class="event-row">
+      <span class="event-time">${time}</span>
+      <span class="event-type">${escHtml(e.event_type || '—').toUpperCase().substring(0, 12)}</span>
+      <span class="event-msg" title="${escHtml(e.message || '')}">${msg}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── MODAL ───────────────────────────────────────────────────────────────────
+
+function openCreateModal() { document.getElementById('create-modal').classList.add('active'); document.getElementById('new-title').focus(); }
+function closeCreateModal() { document.getElementById('create-modal').classList.remove('active'); }
+
+async function createTask() {
+  const title = document.getElementById('new-title').value.trim();
+  if (!title) return;
+
+  const tagsRaw = document.getElementById('new-tags').value;
+  const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+  const body = {
+    title,
+    description: document.getElementById('new-description').value,
+    category: document.getElementById('new-category').value,
+    priority: document.getElementById('new-priority').value,
+    project: document.getElementById('new-project').value.trim(),
+    tags,
+    source: 'manual',
+  };
+
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (typeof API_KEY !== 'undefined' && API_KEY) headers['X-API-Key'] = API_KEY;
+
+    const res = await fetch('/api/cards', { method: 'POST', headers, body: JSON.stringify(body) });
+    if (res.ok) {
+      closeCreateModal();
+      document.getElementById('new-title').value = '';
+      document.getElementById('new-description').value = '';
+      document.getElementById('new-project').value = '';
+      document.getElementById('new-tags').value = '';
+      loadBoard();
+    } else {
+      const err = await res.json();
+      alert(err.error || 'Failed to create task');
+    }
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
+// ── UTILS ───────────────────────────────────────────────────────────────────
+
+function toggleLog() {
+  logOpen = !logOpen;
+  document.getElementById('event-log-body').style.display = logOpen ? '' : 'none';
+  document.getElementById('log-toggle').textContent = logOpen ? '▲' : '▼';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── KEYBOARD SHORTCUTS ─────────────────────────────────────────────────────
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeCreateModal();
+  const active = document.activeElement.tagName;
+  if (active === 'INPUT' || active === 'TEXTAREA' || active === 'SELECT') return;
+  if (e.key === 'n' && !e.ctrlKey && !e.metaKey) openCreateModal();
+  if (e.key === 'r' && !e.ctrlKey && !e.metaKey) loadBoard();
+});
+
+// ── DEMO DATA ────────────────────────────────────────────────────────────────
+
+const DEMO_CARDS = [
+  { card_id:'KAN-001', title:'Add email validation to signup form', state:'running', priority:'high', source:'telegram', category:'code', project:'glass-walls', tags:['auth','backend'], created_at: new Date(Date.now()-3600000).toISOString() },
+  { card_id:'KAN-002', title:'Deploy glass-walls to staging', state:'review',  priority:'medium', source:'executor', category:'infra', project:'glass-walls', tags:['deploy'], created_at: new Date(Date.now()-7200000).toISOString() },
+  { card_id:'KAN-003', title:'Rate limit the /search endpoint', state:'planned', priority:'normal', source:'vscode', category:'feature', project:'api', tags:['perf'], created_at: new Date(Date.now()-1800000).toISOString() },
+  { card_id:'KAN-004', title:'Draft notification system architecture', state:'inbox', priority:'low', source:'telegram', category:'design', tags:['design'], created_at: new Date(Date.now()-900000).toISOString() },
+  { card_id:'KAN-005', title:'Fix CORS headers on staging', state:'blocked', priority:'high', source:'telegram', category:'bug', project:'api', tags:['bug'], created_at: new Date(Date.now()-10800000).toISOString() },
+  { card_id:'KAN-006', title:'Write tests for kanban state machine', state:'done', priority:'normal', source:'vscode', category:'code', tags:['tests'], created_at: new Date(Date.now()-86400000).toISOString() },
+  { card_id:'KAN-007', title:'Tailscale setup + remote mode hardening', state:'planned', priority:'high', source:'telegram', category:'infra', tags:['infra','security'], created_at: new Date(Date.now()-600000).toISOString() },
+  { card_id:'KAN-008', title:'Add pagination to feed', state:'inbox', priority:'low', source:'vscode', category:'feature', project:'glass-walls', tags:['frontend'], created_at: new Date(Date.now()-300000).toISOString() },
+];
+
+const DEMO_EVENTS = [
+  { timestamp: new Date(Date.now()-120000).toISOString(), event_type:'task_started',   message:'executor picked up KAN-001' },
+  { timestamp: new Date(Date.now()-300000).toISOString(), event_type:'task_completed', message:'KAN-002 exit 0' },
+  { timestamp: new Date(Date.now()-600000).toISOString(), event_type:'card_created',   message:'KAN-007 via /task' },
+  { timestamp: new Date(Date.now()-900000).toISOString(), event_type:'mode_switch',    message:'local → remote' },
+];
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+
+loadBoard();
+setInterval(loadBoard, 8000);
+</script>
+</body>
+</html>

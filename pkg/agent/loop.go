@@ -32,6 +32,7 @@ type AgentLoop struct {
 	workspace      string
 	model          string
 	contextWindow  int           // Maximum context window size in tokens
+	temperature    float64       // LLM temperature parameter (0.0-2.0)
 	maxIterations  int
 	sessions       *session.SessionManager
 	contextBuilder *ContextBuilder
@@ -56,6 +57,9 @@ func NewAgentLoop(cfg *config.Config, msgBus *bus.MessageBus, provider providers
 	os.MkdirAll(workspace, 0755)
 
 	toolsRegistry := tools.NewToolRegistry()
+	// Restrict filesystem operations to workspace directory
+	tools.SetFSAllowedDir(workspace)
+
 	toolsRegistry.Register(&tools.ReadFileTool{})
 	toolsRegistry.Register(&tools.WriteFileTool{})
 	toolsRegistry.Register(&tools.ListDirTool{})
@@ -86,6 +90,23 @@ func NewAgentLoop(cfg *config.Config, msgBus *bus.MessageBus, provider providers
 	editFileTool := tools.NewEditFileTool(workspace)
 	toolsRegistry.Register(editFileTool)
 
+	// Register ops monitor tool (for ops-monitor bot remote control)
+	opsMonitorTool := tools.NewOpsMonitorTool(
+		fmt.Sprintf("http://%s:%d", cfg.Gateway.Host, cfg.Gateway.Port),
+		cfg.Gateway.APIKey,
+	)
+	toolsRegistry.Register(opsMonitorTool)
+
+	// Register QMD memory search tool (hybrid local knowledge base search).
+	// Enable via config: tools.qmd.enabled = true, or env PICOCLAW_TOOLS_QMD_ENABLED=true.
+	// In "auto" mode the tool uses the QMD HTTP daemon when it's running and falls
+	// back to qmd CLI (BM25 only) when it's not.  Start the daemon once with:
+	//   qmd mcp --http --daemon --port 8181
+	if cfg.Tools.QMD.Enabled {
+		qmdTool := tools.NewQMDTool(cfg.Tools.QMD.MCPEndpoint, cfg.Tools.QMD.Mode)
+		toolsRegistry.Register(qmdTool)
+	}
+
 	sessionsManager := session.NewSessionManager(filepath.Join(workspace, "sessions"))
 
 	// Create context builder and set tools registry
@@ -98,6 +119,7 @@ func NewAgentLoop(cfg *config.Config, msgBus *bus.MessageBus, provider providers
 		workspace:      workspace,
 		model:          cfg.Agents.Defaults.Model,
 		contextWindow:  cfg.Agents.Defaults.MaxTokens, // Restore context window for summarization
+		temperature:    cfg.Agents.Defaults.Temperature,
 		maxIterations:  cfg.Agents.Defaults.MaxToolIterations,
 		sessions:       sessionsManager,
 		contextBuilder: contextBuilder,
@@ -325,8 +347,8 @@ func (al *AgentLoop) runLLMIteration(ctx context.Context, messages []providers.M
 				"model":             al.model,
 				"messages_count":    len(messages),
 				"tools_count":       len(providerToolDefs),
-				"max_tokens":        8192,
-				"temperature":       0.7,
+				"max_tokens":        al.contextWindow,
+				"temperature":       al.temperature,
 				"system_prompt_len": len(messages[0].Content),
 			})
 
@@ -340,8 +362,8 @@ func (al *AgentLoop) runLLMIteration(ctx context.Context, messages []providers.M
 
 		// Call LLM
 		response, err := al.provider.Chat(ctx, messages, providerToolDefs, al.model, map[string]interface{}{
-			"max_tokens":  8192,
-			"temperature": 0.7,
+			"max_tokens":  al.contextWindow,
+			"temperature": al.temperature,
 		})
 
 		if err != nil {
@@ -473,6 +495,31 @@ func (al *AgentLoop) GetStartupInfo() map[string]interface{} {
 	info["skills"] = al.contextBuilder.GetSkillsInfo()
 
 	return info
+}
+
+// GetSessionManager returns the session manager for API access.
+func (al *AgentLoop) GetSessionManager() *session.SessionManager {
+	return al.sessions
+}
+
+// GetToolRegistry returns the tool registry for API access.
+func (al *AgentLoop) GetToolRegistry() *tools.ToolRegistry {
+	return al.tools
+}
+
+// GetModel returns the active model name.
+func (al *AgentLoop) GetModel() string {
+	return al.model
+}
+
+// GetWorkspace returns the workspace path.
+func (al *AgentLoop) GetWorkspace() string {
+	return al.workspace
+}
+
+// IsRunning returns true if the agent loop is currently running.
+func (al *AgentLoop) IsRunning() bool {
+	return al.running.Load()
 }
 
 // formatMessagesForLog formats messages for logging

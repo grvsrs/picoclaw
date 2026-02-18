@@ -63,6 +63,7 @@ type CronService struct {
 	mu        sync.RWMutex
 	running   bool
 	stopChan  chan struct{}
+	stopOnce  sync.Once
 	gronx     *gronx.Gronx
 }
 
@@ -110,7 +111,9 @@ func (cs *CronService) Stop() {
 	}
 
 	cs.running = false
-	close(cs.stopChan)
+	cs.stopOnce.Do(func() {
+		close(cs.stopChan)
+	})
 }
 
 func (cs *CronService) runLoop() {

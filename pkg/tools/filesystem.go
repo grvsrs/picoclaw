@@ -5,7 +5,36 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+// allowedDir restricts file operations. Set via SetAllowedDir().
+var fsAllowedDir string
+
+// SetFSAllowedDir restricts read/write/list tools to paths under the given directory.
+func SetFSAllowedDir(dir string) {
+	fsAllowedDir = dir
+}
+
+// checkPathAllowed validates the path is within the allowed directory.
+func checkPathAllowed(rawPath string) (string, error) {
+	absPath, err := filepath.Abs(rawPath)
+	if err != nil {
+		return "", fmt.Errorf("invalid path: %w", err)
+	}
+	if fsAllowedDir == "" {
+		return absPath, nil
+	}
+	allowedAbs, err := filepath.Abs(fsAllowedDir)
+	if err != nil {
+		return "", fmt.Errorf("invalid allowed dir: %w", err)
+	}
+	// Ensure path is under the allowed dir
+	if !strings.HasPrefix(absPath, allowedAbs+string(filepath.Separator)) && absPath != allowedAbs {
+		return "", fmt.Errorf("access denied: path %q is outside allowed directory %q", absPath, allowedAbs)
+	}
+	return absPath, nil
+}
 
 type ReadFileTool struct{}
 
@@ -36,7 +65,12 @@ func (t *ReadFileTool) Execute(ctx context.Context, args map[string]interface{})
 		return "", fmt.Errorf("path is required")
 	}
 
-	content, err := os.ReadFile(path)
+	safePath, err := checkPathAllowed(path)
+	if err != nil {
+		return "", err
+	}
+
+	content, err := os.ReadFile(safePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file: %w", err)
 	}
@@ -82,12 +116,17 @@ func (t *WriteFileTool) Execute(ctx context.Context, args map[string]interface{}
 		return "", fmt.Errorf("content is required")
 	}
 
-	dir := filepath.Dir(path)
+	safePath, err := checkPathAllowed(path)
+	if err != nil {
+		return "", err
+	}
+
+	dir := filepath.Dir(safePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(safePath, []byte(content), 0644); err != nil {
 		return "", fmt.Errorf("failed to write file: %w", err)
 	}
 
@@ -122,6 +161,12 @@ func (t *ListDirTool) Execute(ctx context.Context, args map[string]interface{}) 
 	if !ok {
 		path = "."
 	}
+
+	safePath, pathErr := checkPathAllowed(path)
+	if pathErr != nil {
+		return "", pathErr
+	}
+	path = safePath
 
 	entries, err := os.ReadDir(path)
 	if err != nil {

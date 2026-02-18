@@ -1,0 +1,53 @@
+[
+  {
+    "_comment": "Copilot-only activity — no Antigravity task. Should NOT create Kanban cards. Low confidence.",
+    "events": [
+      {
+        "source": "copilot",
+        "event_type": "copilot.completion",
+        "tokens_prompt": 100,
+        "tokens_completion": 50,
+        "artifact_path": "/logs/copilot-solo.json",
+        "timestamp_offset_secs": 0
+      },
+      {
+        "source": "copilot",
+        "event_type": "copilot.completion",
+        "tokens_prompt": 120,
+        "tokens_completion": 60,
+        "artifact_path": "/logs/copilot-solo.json",
+        "timestamp_offset_secs": 5
+      },
+      {
+        "source": "copilot",
+        "event_type": "copilot.completion",
+        "tokens_prompt": 150,
+        "tokens_completion": 70,
+        "artifact_path": "/logs/copilot-solo.json",
+        "timestamp_offset_secs": 10
+      },
+      {
+        "source": "copilot",
+        "event_type": "copilot.completion",
+        "tokens_prompt": 200,
+        "tokens_completion": 90,
+        "artifact_path": "/logs/copilot-solo.json",
+        "timestamp_offset_secs": 15
+      },
+      {
+        "source": "copilot",
+        "event_type": "copilot.completion",
+        "tokens_prompt": 180,
+        "tokens_completion": 85,
+        "artifact_path": "/logs/copilot-solo.json",
+        "timestamp_offset_secs": 20
+      }
+    ],
+    "expected": {
+      "copilot_base_confidence": 0.2,
+      "burst_detected": true,
+      "max_confidence_without_context": 0.4,
+      "no_kanban_card_created": true
+    }
+  }
+]
