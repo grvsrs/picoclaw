@@ -301,7 +301,7 @@ tailwind.config = {
       <div class="flex items-end justify-between mb-6">
         <div>
           <h1 class="text-3xl font-black tracking-tighter uppercase mb-1">Task <span class="text-primary italic">Board</span></h1>
-          <p class="text-slate-600 font-mono text-xs">PATH: /api/tasks</p>
+          <p class="text-slate-600 font-mono text-xs">PATH: /api/kanban/cards → Python kanban server</p>
         </div>
         <div class="flex gap-2">
           <button onclick="showAddTask()" class="px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-primary/80 transition-all glow-blue">
@@ -530,14 +530,15 @@ async function apiFetch(path, opts={}) {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 async function loadOverview() {
   try {
-    const [statusR, infoR, sessionsR, cronR] = await Promise.all([
+    const [statusR, infoR, sessionsR, cronR, botsR] = await Promise.all([
       apiFetch('/api/system/status'),
       apiFetch('/api/system/info'),
       apiFetch('/api/sessions'),
       apiFetch('/api/cron/jobs'),
+      apiFetch('/api/bots'),
     ]);
-    const [status, info, sessions, cron] = await Promise.all([
-      statusR.json(), infoR.json(), sessionsR.json(), cronR.json(),
+    const [status, info, sessions, cron, botsData] = await Promise.all([
+      statusR.json(), infoR.json(), sessionsR.json(), cronR.json(), botsR.json(),
     ]);
 
     // Header badges
@@ -577,15 +578,21 @@ async function loadOverview() {
         </div>
       </div>`;
 
-    // Channels panel
+    // Channels panel — use bots fleet (static bots + running channels)
+    const bots = botsData.bots ?? [];
     const chans = status.channels ?? {};
-    const chanHtml = Object.entries(chans).map(([name, info]) => {
-      const on = info?.enabled ?? info?.connected ?? false;
-      return `<div class="flex items-center justify-between">
-        <span class="text-slate-400 capitalize">${name}</span>
-        <span class="tag ${on ? 'badge-enabled' : 'badge-disabled'}">${on ? '● on' : '○ off'}</span>
-      </div>`;
-    }).join('') || '<p class="text-slate-600 text-xs">No channel data</p>';
+    const chanHtml = bots.length
+      ? bots.map(bot => `<div class="flex items-center justify-between">
+          <span class="text-slate-400">${escHtml(bot.config?.name ?? bot.id)}</span>
+          <span class="tag ${bot.running ? 'badge-enabled' : 'badge-disabled'}">${bot.running ? '● on' : '○ off'}</span>
+        </div>`).join('')
+      : Object.entries(chans).map(([name, info]) => {
+          const on = info?.enabled ?? info?.connected ?? false;
+          return `<div class="flex items-center justify-between">
+            <span class="text-slate-400 capitalize">${name}</span>
+            <span class="tag ${on ? 'badge-enabled' : 'badge-disabled'}">${on ? '● on' : '○ off'}</span>
+          </div>`;
+        }).join('') || '<p class="text-slate-600 text-xs">No channel data</p>';
     document.getElementById('ov-channels-body').innerHTML = chanHtml;
 
     // Sessions list
@@ -623,7 +630,36 @@ async function loadChannels() {
     const channels = data.channels ?? data ?? {};
     const grid = document.getElementById('channels-grid');
     if (!Object.keys(channels).length) {
-      grid.innerHTML = '<p class="text-slate-600 text-sm">No channel data returned</p>';
+      // Fall back to bots fleet (includes Python-managed static bots)
+      try {
+        const botsR = await apiFetch('/api/bots');
+        const botsData = await botsR.json();
+        const bots = botsData.bots ?? [];
+        if (!bots.length) {
+          grid.innerHTML = '<p class="text-slate-600 text-sm">No channels configured. Add token + set enabled:true in config.json.</p>';
+          return;
+        }
+        grid.innerHTML = bots.map(bot => {
+          const meta = CHANNEL_META[bot.type] ?? { icon: 'smart_toy', color: 'text-slate-400', desc: 'External bot' };
+          const cfg = bot.config ?? {};
+          const label = cfg.name ?? bot.id;
+          const sub = cfg.username ?? bot.type?.toUpperCase() ?? '';
+          return `
+            <div class="card p-5 flex flex-col gap-3 ${bot.running ? 'border-accent-green/30' : ''} transition-all">
+              <div class="flex items-start justify-between">
+                <div class="flex items-center gap-2.5">
+                  <span class="ms ${meta.color} text-2xl">${meta.icon}</span>
+                  <div>
+                    <h4 class="font-bold">${escHtml(label)}</h4>
+                    <p class="text-[10px] text-slate-600 font-mono">${escHtml(sub)}</p>
+                  </div>
+                </div>
+                <span class="tag ${bot.running ? 'badge-enabled' : 'badge-disabled'}">${bot.running ? '● running' : '○ stopped'}</span>
+              </div>
+              <p class="text-xs text-slate-500">${escHtml(meta.desc || (cfg.managed === 'external' ? 'Python-managed — systemd service' : ''))}</p>
+            </div>`;
+        }).join('');
+      } catch { grid.innerHTML = '<p class="text-slate-600 text-sm">Could not load channel data.</p>'; }
       return;
     }
     grid.innerHTML = Object.entries(channels).map(([name, info]) => {
@@ -688,17 +724,21 @@ async function loadAgents() {
         </div>` : ''}
       </div>`;
 
-    // Tools list
-    const tools = toolsData.tools ?? [];
+    // Tools list — /api/tools returns a raw array [{type,function:{name,description,parameters}}]
+    const rawTools = Array.isArray(toolsData) ? toolsData : (toolsData.tools ?? []);
+    const tools = rawTools.map(t => ({
+      name: (t.function?.name ?? t.name ?? ''),
+      description: (t.function?.description ?? t.description ?? ''),
+      paramCount: Object.keys(t.function?.parameters?.properties ?? t.params ?? {}).length,
+    }));
     setText('tools-count', tools.length);
     document.getElementById('tools-list').innerHTML = tools.map(t => `
       <div class="p-3 rounded-lg bg-white/3 border border-border-d hover:border-primary/30 transition-all">
         <div class="flex items-center justify-between mb-1">
           <span class="font-mono text-sm text-accent-cyan font-bold">${escHtml(t.name)}</span>
-          ${t.ops ? `<span class="text-[10px] text-slate-600 font-mono">${t.ops.length} ops</span>` : ''}
+          ${t.paramCount ? `<span class="text-[10px] text-slate-600 font-mono">${t.paramCount} params</span>` : ''}
         </div>
-        <p class="text-xs text-slate-500">${escHtml(t.description||'')}</p>
-        ${t.ops ? `<div class="flex flex-wrap gap-1 mt-2">${t.ops.map(op=>`<span class="px-2 py-0.5 bg-bg-dark text-slate-500 rounded text-[10px] font-mono border border-border-d">${escHtml(op)}</span>`).join('')}</div>` : ''}
+        <p class="text-xs text-slate-500">${escHtml(t.description)}</p>
       </div>`).join('') || '<p class="text-slate-600 text-xs">No tools registered</p>';
 
     // Cron jobs
@@ -723,11 +763,24 @@ async function loadAgents() {
 const KB_COLS = { inbox: 'kb-inbox', planned: 'kb-planned', running: 'kb-running', done: 'kb-done' };
 const KB_PRIORITY_COLOR = { high: 'text-error', medium: 'text-warn', low: 'text-slate-500', normal: 'text-slate-500' };
 
+// Map Python/Go card states to the 4 Kanban columns
+const KB_STATE_MAP = { inbox:'inbox', planned:'planned', running:'running', review:'running', blocked:'inbox', done:'done', cancelled:'done' };
+
 async function loadKanban() {
   try {
-    const r = await apiFetch('/api/tasks');
-    const data = await r.json();
-    const tasks = data.tasks ?? (Array.isArray(data) ? data : []);
+    // Use /api/kanban/cards which proxies to Python kanban_server.py (port 3000)
+    // Falls back gracefully to /api/tasks if proxy is unavailable
+    let tasks = [];
+    try {
+      const r = await apiFetch('/api/kanban/cards');
+      const data = await r.json();
+      // Python returns {cards:[...]}, Go native returns [] or {tasks:[...]}
+      tasks = data.cards ?? data.tasks ?? (Array.isArray(data) ? data : []);
+    } catch {
+      const r2 = await apiFetch('/api/tasks');
+      const data2 = await r2.json();
+      tasks = data2.tasks ?? (Array.isArray(data2) ? data2 : []);
+    }
 
     Object.values(KB_COLS).forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
     const counts = { inbox: 0, planned: 0, running: 0, done: 0 };
@@ -737,9 +790,10 @@ async function loadKanban() {
     } else {
       document.getElementById('kanban-empty').classList.add('hidden');
       tasks.forEach(task => {
-        const state = (task.state || task.status || 'inbox').toLowerCase();
-        const colState = KB_COLS[state] ? state : 'inbox';
+        const rawState = (task.state || task.status || 'inbox').toLowerCase();
+        const colState = KB_STATE_MAP[rawState] ?? 'inbox';
         counts[colState]++;
+        const id = task.card_id ?? task.id ?? '';
         const el = document.createElement('div');
         el.className = 'kanban-card p-3';
         const prio = (task.priority || 'normal').toLowerCase();
@@ -747,10 +801,10 @@ async function loadKanban() {
         el.innerHTML = `
           <div class="flex items-start justify-between gap-2 mb-2">
             <span class="text-xs font-bold text-slate-300 leading-snug flex-1">${escHtml(task.title||task.name||'Untitled')}</span>
-            <span class="text-[10px] font-mono ${prioColor} shrink-0">${task.id||''}</span>
+            <span class="text-[10px] font-mono text-slate-600 shrink-0">${escHtml(id)}</span>
           </div>
           ${task.project ? `<p class="text-[10px] text-slate-600 font-mono mb-1">${escHtml(task.project)}</p>` : ''}
-          ${task.body||task.description ? `<p class="text-[10px] text-slate-500 line-clamp-2">${escHtml((task.body||task.description).slice(0,100))}</p>` : ''}
+          ${task.description||task.body ? `<p class="text-[10px] text-slate-500 line-clamp-2">${escHtml((task.description||task.body||'').slice(0,100))}</p>` : ''}
           <div class="flex items-center justify-between mt-2">
             <span class="text-[10px] text-slate-700">${task.created_at ? new Date(task.created_at).toLocaleDateString() : ''}</span>
             <span class="text-[10px] ${prioColor} uppercase font-bold">${prio !== 'normal' ? prio : ''}</span>
@@ -769,9 +823,9 @@ async function createTask() {
   if (!title) return;
   const project = document.getElementById('task-project').value.trim();
   try {
-    await apiFetch('/api/tasks', {
+    await apiFetch('/api/kanban/cards', {
       method: 'POST',
-      body: JSON.stringify({ title, project: project || undefined, state: 'inbox' }),
+      body: JSON.stringify({ title, project: project || undefined, source: 'manual' }),
     });
     document.getElementById('task-title').value = '';
     hideAddTask();

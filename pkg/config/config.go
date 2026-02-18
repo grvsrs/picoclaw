@@ -144,8 +144,19 @@ type ToolsConfig struct {
 	QMD QMDConfig      `json:"qmd"`
 }
 
+// StaticBotConfig describes a bot that is managed outside the Go runtime
+// (e.g. Python bots) but should appear in the dashboard fleet view.
+type StaticBotConfig struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Username string `json:"username,omitempty"`
+	Running  bool   `json:"running"`
+}
+
 type IntegrationsConfig struct {
-	KanbanServerURL string `json:"kanban_server_url" env:"PICOCLAW_INTEGRATIONS_KANBAN_SERVER_URL"`
+	KanbanServerURL string            `json:"kanban_server_url" env:"PICOCLAW_INTEGRATIONS_KANBAN_SERVER_URL"`
+	StaticBots      []StaticBotConfig `json:"static_bots,omitempty"`
 }
 
 func DefaultConfig() *Config {

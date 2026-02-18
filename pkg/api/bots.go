@@ -357,6 +357,32 @@ func (s *Server) getBotsInfo() []BotInfo {
 		}
 	}
 
+	// Append static bots defined in config (e.g. Python-managed bots)
+	if s.config != nil {
+		for _, sb := range s.config.Integrations.StaticBots {
+			found := false
+			for _, b := range bots {
+				if b.ID == sb.ID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				bots = append(bots, BotInfo{
+					ID:      sb.ID,
+					Type:    sb.Type,
+					Enabled: true,
+					Running: sb.Running,
+					Config: map[string]interface{}{
+						"name":     sb.Name,
+						"username": sb.Username,
+						"managed":  "external",
+					},
+				})
+			}
+		}
+	}
+
 	return bots
 }
 
